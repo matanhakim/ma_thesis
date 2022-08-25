@@ -1,0 +1,337 @@
+---
+title: "Thesis - Import Files"
+format:
+  html:
+    theme: default
+    toc: true
+    number-sections: true
+    code-fold: true
+    warning: false
+    output: false
+    error: true
+editor_options: 
+  markdown: 
+    wrap: sentence
+---
+
+# Load libraries
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(httr)
+locale("he")
+```
+
+# Municipalities data
+
+## Import a single municipalities file from CBS (2016 and later)
+
+This is a function that gets a url and returns a tibble.
+First, it extracts the file extension with a regular expression, and then downloads the file with the url parameter.
+later, it reads the two lines of names of variables and handles each one of them separately.
+The upper row gets filled with previous variable names for NAs because of merged cells in the original table.
+The lower row gets blank string for NAs.
+When concatenating, if there is a second argument for the variable, the variable name gets padded with blank space between its two arguments.
+
+```{r}
+
+read_muni_new <- function(url){
+  file_ext <- str_extract(url, "[0-9a-z]+$")
+  GET(url, write_disk(tf <- tempfile(fileext = file_ext)))
+  
+  df_head <- read_excel(tf, sheet = 2, skip = 3, n_max = 2, col_names = FALSE)
+  
+  col_names_1 <- df_head %>% 
+    slice(1) %>% 
+    pivot_longer(everything()) %>% 
+    select(value) %>% 
+    fill(value)
+  
+  col_names_2 <- df_head %>% 
+    slice(2) %>% 
+    pivot_longer(everything()) %>% 
+    select(value) %>% 
+    replace_na(list(value = ""))
+  
+  df_vars <- bind_cols(col_names_1, col_names_2) %>% 
+    mutate(
+      var_names = if_else(str_length(value...2) > 0,
+                         str_c(value...1, " ", value...2),
+                         str_c(value...1, value...2))
+    )
+  
+  var_names <- df_vars %>% pull(var_names)
+  
+  df_whole <- read_excel(tf, sheet = 2, skip = 5, col_names = var_names)
+  return(df_whole)
+
+}
+
+```
+
+# General elections data
+
+## Importing general elections files from the elections committee by url
+
+important to note this function is currently only applicable to excel files
+
+```{r}
+
+read_elec_general <- function(url){
+  file_ext <- str_extract(url, "[0-9a-z]+$")
+  GET(url, write_disk(tf <- tempfile(fileext = file_ext)))
+  
+  df <- read_excel(tf)
+  
+  df
+}
+```
+
+## Getting the list of yishuvim id and municipality id
+
+The function gets the 2021 yishuvim file from CBS, cleans it, and returns a tibble of id's of yishuvim by id's of municipality.
+the values are all text; regional councils have 2-numbers text id's, and yishuvim and other municipalities have 4-nubmers text id's.
+If there is no municipality id, it means that the yishuv is either unrecognized (for example, some Bedouin people in the Negev) or it is some sort of place that is not under any municipality (for example, Mikveh Israel farm).
+
+```{r}
+get_yishuv_muni <- function(){
+
+  url <- "https://www.cbs.gov.il/he/publications/doclib/2019/ishuvim/bycode2021.xlsx"
+  file_ext <- str_extract(url, "[0-9a-z]+$")
+  GET(url, write_disk(tf <- tempfile(fileext = file_ext)))  
+  
+  yishuvim <- read_excel(tf, col_types = "text")
+  
+  yishuvim <- yishuvim %>% 
+    select(
+      yishuv_id = 2,
+      muni_id = 9
+    ) %>% 
+    mutate(
+      yishuv_id = str_pad(yishuv_id, width = 4, side = "left", pad = "0"),
+      muni_id = case_when(
+        (muni_id == "0" | muni_id == "99") ~ yishuv_id,
+        TRUE ~ muni_id
+      )
+    )
+  
+yishuvim
+}
+
+```
+
+## Adding municipality id to a data frame with yishuv_id
+
+The function receives a data frame and the column number of the yishuv id as arguments.
+First, it calls the data frame that links between yishuvim and municipalities.
+Then, it converts the yishuv_id from the argument to a character vector, pads it with 0's to fit the format, and adds the municipalities id's by the yishuv id.
+The function returns the original data frame with two additional columns: the formatted yishuv id and the added municipality id.
+
+```{r}
+match_yishuv_muni <- function(data, id_col_num){
+
+  df_keys <- get_yishuv_muni()
+  
+  data %>% 
+    mutate(
+      yishuv_id = as.character(pull(., id_col_num)),
+      yishuv_id = str_pad(yishuv_id, width = 4, side = "left", pad = "0")
+      ) %>% 
+    left_join(df_keys, by = ("yishuv_id"))
+  
+}
+```
+
+## Manipulating elections data to fit municipalities data
+
+The function receives a data frame of the elections with municipal id for every voting site.
+It renames the relevant total and party-specific variables, groups by every municipality, and calculates summary statistics: voting percentage for HaLikud party as a part of total votes, voting percentage for coalition parties (Israel Betetny was included even though they left the coalition 1 year prior to elections), total potential votes and total good votes.
+the function returns the summarized data frame.
+NA's are yishuvim not under any municipality, the only municipality with no votes is Ein Kinya (muni_id 4502).
+
+```{r}
+get_elect_pct <- function(data){
+  
+  data %>% 
+    rename(
+      pot_votes = 4,
+      good_votes = 7,
+      yahadut_hatorah = 9,
+      habait_hayehudi = 14,
+      kulanu = 19,
+      israel_beytenu = 20,
+      halikud = 21,
+      shas = 33
+    ) %>% 
+    group_by(muni_id) %>% 
+    summarize(
+      likud_pct = sum(halikud) / sum(good_votes),
+      coal_pct = sum(
+        yahadut_hatorah +
+        habait_hayehudi +
+        kulanu +
+        israel_beytenu +
+        halikud +
+        shas
+      ) / sum(good_votes),
+      pot_votes = sum(pot_votes),
+      good_votes = sum(good_votes)
+    )
+}
+
+```
+
+# Budget data
+
+## Importing and manipulating Sela budget data from Open Budget for 2016-2020
+
+The function reads the csv file from [The Open Budget website](https://next.obudget.org/i/budget/0019420256/2020?li=0&theme=budgetkey).
+It then selects and renames relevant variables, replaces NA's with 0's, summarizes by year and municipality, and filters for the relevant year from the parameter.
+It returns the summarized data frame.
+Important to note the current url method is pretty brutal and further programming is needed here, maybe working with their API.
+
+```{r}
+get_sela_data <- function(year_param){
+  url <- "https://next.obudget.org/api/download?query=SELECT%20year_requested%20AS%20%22%D7%A9%D7%A0%D7%94%22%2C%20supporting_ministry%20AS%20%22%D7%9E%D7%A9%D7%A8%D7%93%22%2C%20request_type%20AS%20%22%D7%A1%D7%95%D7%92%20%D7%AA%D7%9E%D7%99%D7%9B%D7%94%22%2C%20support_title%20AS%20%22%D7%A0%D7%95%D7%A9%D7%90%22%2C%20budget_code%2C%20budget_code%20AS%20%22%D7%9E%D7%A1%D7%A4%D7%A8%20%D7%AA%D7%A7%D7%A0%D7%94%22%2C%20%27supports%2F%27%20%7C%7C%20budget_code%20%7C%7C%20%27%2F%27%20%7C%7C%20year_requested%20%7C%7C%20%27%2F%27%20%7C%7C%20entity_id%20%7C%7C%20%27%2F%27%20%7C%7C%20request_type%20AS%20item_id%2C%20coalesce(entity_name%2C%20recipient)%20as%20%22%D7%9E%D7%A7%D7%91%D7%9C%20%D7%94%D7%AA%D7%9E%D7%99%D7%9B%D7%94%22%2C%20entity_id%20as%20%22%D7%9E%D7%A1%D7%A4%D7%A8%20%D7%AA%D7%90%D7%92%D7%99%D7%93%22%2C%20%27org%2F%27%20%7C%7C%20entity_kind%20%7C%7C%20%27%2F%27%20%7C%7C%20entity_id%20as%20entity_item_id%2C%20sum(amount_approved)%20as%20%22%D7%A1%D7%94%D7%B4%D7%9B%20%D7%90%D7%95%D7%A9%D7%A8%22%2C%20sum(amount_paid)%20as%20%22%D7%A1%D7%94%D7%B4%D7%9B%20%D7%A9%D7%95%D7%9C%D7%9D%22%20FROM%20raw_supports%20WHERE%20year_requested%20%3E0%20AND%20budget_code%20%3D%20%270019420256%27%20GROUP%20BY%201%2C%202%2C%203%2C%204%2C%205%2C%206%2C%207%2C%208%2C%209%2C%2010%20order%20by%20year_requested%20desc&format=csv&filename=%D7%A1%D7%9C%20%D7%9C%D7%AA%D7%A8%D7%91%D7%95%D7%AA%20%D7%A2%D7%99%D7%A8%D7%95%D7%A0%D7%99%D7%AA__%20%D7%A4%D7%99%D7%A8%D7%95%D7%98%20%D7%9B%D7%9C%20%D7%94%D7%AA%D7%9E%D7%99%D7%9B%D7%95%D7%AA%20%D7%9E%D7%AA%D7%A7%D7%A6%D7%99%D7%91%20%D7%96%D7%94%20%D7%A9%D7%90%D7%95%D7%A9%D7%A8%D7%95%20%D7%91%20%D7%9B%D7%9C%20%D7%94%D7%A9%D7%A0%D7%99%D7%9D&headers=%D7%A0%D7%95%D7%A9%D7%90%3Aitem_link(item_id)%3B%D7%9E%D7%A1%D7%A4%D7%A8%20%D7%AA%D7%A7%D7%A0%D7%94%3Abudget_code%3Asearch_term(budget_code)%3B%D7%9E%D7%A9%D7%A8%D7%93%3B%D7%A1%D7%95%D7%92%20%D7%AA%D7%9E%D7%99%D7%9B%D7%94%3B%D7%9E%D7%A7%D7%91%D7%9C%20%D7%94%D7%AA%D7%9E%D7%99%D7%9B%D7%94%3Aitem_link(entity_item_id)%3B%D7%9E%D7%A1%D7%A4%D7%A8%20%D7%AA%D7%90%D7%92%D7%99%D7%93%3B%D7%A9%D7%A0%D7%94%3B%D7%A1%D7%94%D7%B4%D7%9B%20%D7%90%D7%95%D7%A9%D7%A8%3Anumber%3B%D7%A1%D7%94%D7%B4%D7%9B%20%D7%A9%D7%95%D7%9C%D7%9D%3Anumber"
+  
+  read_csv(url) %>% 
+    select(
+      tax_name = 5,
+      tax_id = 6,
+      year = 7,
+      budget_approved = 8,
+      budget_paid = 9
+    ) %>% 
+    replace_na(
+      list(budget_approved = 0, budget_paid = 0)
+    ) %>% 
+    group_by(tax_id, year) %>% 
+    summarise(
+      budget_approved = sum(budget_approved),
+      budget_paid = sum(budget_paid)
+    ) %>% 
+    ungroup() %>% 
+    filter(year == year_param)
+
+}
+```
+
+## Getting conversion table between tax municipal id and CBS municipal id
+
+This function reads the csv file from my GitHub repository, selects the two relevant variables, and returns the data frame.
+
+```{r}
+get_muni_id_conv <- function(){
+  
+  read_csv("https://raw.githubusercontent.com/matanhakim/general_files/main/muni_ids.csv") %>% 
+  select(
+    cbs_id,
+    tax_id
+  )  
+}
+```
+
+## Adding municipality id to a data frame with budget data
+
+```{r}
+match_budget_muni <- function(data){
+  df_keys <- get_muni_id_conv()
+  
+  data %>% 
+    left_join(df_keys, by = "tax_id") %>% 
+    select(
+      -tax_id,
+      -year
+    )
+  
+}
+
+df <- get_sela_data(2018) %>% 
+  match_budget_muni()
+
+```
+
+# Combining all data sources into one data frame
+
+```{r}
+muni_2018_url <- "https://www.cbs.gov.il/he/publications/doclib/2019/hamakomiot1999_2017/2018.xlsx" # Initializing the url for 2018 municipalities data
+elec_url <- "https://bechirot22.bechirot.gov.il/election/Documents/%D7%91%D7%97%D7%99%D7%A8%D7%95%D7%AA%20%D7%A7%D7%95%D7%93%D7%9E%D7%95%D7%AA/results_20.xls" # Initializing the url for 2015 elections
+
+muni_df <- read_muni_new(muni_2018_url) %>% 
+  rename(muni_id = 2)
+
+elec_df <- read_elec_general(elec_url) %>%  # Reading the general elections raw data
+  match_yishuv_muni(2) %>% # Adding the linked yishuvim and municipalities to elections data
+  get_elect_pct() # Calculating elections data by municipality
+
+budget_df <- get_sela_data(2018) %>% # Reading and manipulating Sela budget data by year and municipality
+  match_budget_muni() # Adding the cbs municipality id
+
+df <- muni_df %>% 
+  left_join(elec_df, by = "muni_id") %>% 
+  left_join(budget_df, by = c("muni_id" = "cbs_id")) %>% 
+  mutate( # Change NA's (unbudgeted or no voters municipalities) to 0's
+    across(
+      last_col(5:0),
+      replace_na, 0
+    )
+  )
+
+```
+
+# Future Code that is not operatable right now
+
+## Binding municipality files for 2016-2019 by row
+
+Right now there is an error
+
+```{r}
+
+bind_muni_2016_2019 <- function(){
+  url_2016 <- "https://www.cbs.gov.il/he/publications/doclib/2019/hamakomiot1999_2017/2016.xlsx"
+  url_2017 <- "https://www.cbs.gov.il/he/mediarelease/doclib/2019/057/24_19_057t1.xlsx"
+  url_2018 <- "https://www.cbs.gov.il/he/publications/doclib/2019/hamakomiot1999_2017/2018.xlsx"
+  url_2019 <- "https://www.cbs.gov.il/he/publications/doclib/2019/hamakomiot1999_2017/2019.xlsx"
+  
+  df_2016 <- read_muni_new(url_2016)
+  df_2017 <- read_muni_new(url_2017)
+  df_2018 <- read_muni_new(url_2018)
+  df_2019 <- read_muni_new(url_2019)
+  
+  muni_df <- bind_rows(
+    df_2016,
+    df_2017#,
+#    df_2018,
+#    df_2019
+    )
+  
+  muni_df
+  
+}
+```
+
+## Import a single municipalities file (2015 and earlier)
+
+I read the municipalities file by url, extracts the two tables of local municipalities and regional councils, and merges them.
+Right now there is an error because of the merging process.
+
+```{r}
+
+read_muni_old <- function(url){
+  file_ext <- str_extract(url, "[0-9a-z]+$")
+  GET(url, write_disk(tf <- tempfile(fileext = file_ext)))
+  
+  df2 <- read_excel(tf, sheet = 2, skip = 1)
+  df2 <- df2 %>% drop_na(3)
+  
+  df3 <- read_excel(tf, sheet = 4, skip = 1)
+  df3 <- df3 %>% drop_na(3)
+  
+  df <- bind_rows(df2, df3)
+  return(df)
+
+}
+
+# df <- read_muni_old("https://www.cbs.gov.il/he/publications/doclib/2019/hamakomiot1999_2017/2015.xls")
+```
