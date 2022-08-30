@@ -5,6 +5,23 @@ Thesis - Tranform Variables
   id="toc-select-and-name-all-relevant-variables"><span
   class="toc-section-number">1</span> Select and name all relevant
   variables</a>
+- <a href="#transform-types-and-problematic-values-of-variables"
+  id="toc-transform-types-and-problematic-values-of-variables"><span
+  class="toc-section-number">2</span> Transform types and problematic
+  values of variables</a>
+  - <a href="#change-relevant-charachter-variables-to-numeric"
+    id="toc-change-relevant-charachter-variables-to-numeric"><span
+    class="toc-section-number">2.1</span> Change relevant charachter
+    variables to numeric</a>
+  - <a href="#replace-nas-with-0s" id="toc-replace-nas-with-0s"><span
+    class="toc-section-number">2.2</span> Replace Na’s with 0’s</a>
+  - <a href="#create-factor-variables"
+    id="toc-create-factor-variables"><span
+    class="toc-section-number">2.3</span> Create factor variables</a>
+  - <a href="#round-relevant-numeric-variables"
+    id="toc-round-relevant-numeric-variables"><span
+    class="toc-section-number">2.4</span> Round relevant numeric
+    variables</a>
 
 # Select and name all relevant variables
 
@@ -12,10 +29,10 @@ Thesis - Tranform Variables
 df <- df %>% 
   select(
     name = 1,
+    muni_id,
     district = 3,
     type = 4,
     distance_ta = 5,
-    area = 11,
     pop = 13,
     jew_pct = 14,
     arab_pct = 16,
@@ -44,7 +61,6 @@ df <- df %>%
     bagrut_pct = 154,
     bagrut_uni_pct = 155,
     high_educ_35_55_pct = 156,
-    high_educ_enter_8_pct = 157,
     ses_c = 231,
     ses_i = 232,
     ses_r = 233,
@@ -55,4 +71,101 @@ df <- df %>%
   )
 ```
 
-    Error in df %>% select(name = 1, district = 3, type = 4, distance_ta = 5, : could not find function "%>%"
+    Error in df %>% select(name = 1, muni_id, district = 3, type = 4, distance_ta = 5, : could not find function "%>%"
+
+# Transform types and problematic values of variables
+
+## Change relevant charachter variables to numeric
+
+``` r
+df <- df %>% 
+  mutate(
+    across(
+      c(
+        distance_ta,
+        jew_pct,
+        arab_pct,
+        muslim_pct,
+        christ_pct,
+        druze_pct,
+        immig_1990_pct,
+      ),
+      as.numeric
+    )
+  )
+```
+
+    Error in df %>% mutate(across(c(distance_ta, jew_pct, arab_pct, muslim_pct, : could not find function "%>%"
+
+``` r
+# Check which variables have NA's after the coercion to numeric variable
+check <- df %>% 
+  summarise(
+    across(
+      everything(),
+      ~sum(is.na(.))
+    )
+  )
+```
+
+    Error in df %>% summarise(across(everything(), ~sum(is.na(.)))): could not find function "%>%"
+
+## Replace Na’s with 0’s
+
+except for distance from Tel Aviv, which is NA for regional councils
+
+``` r
+df <- df %>% 
+  mutate(
+    across(
+      c(
+        jew_pct,
+        arab_pct,
+        muslim_pct,
+        christ_pct,
+        druze_pct,
+        immig_1990_pct,
+      ),
+      replace_na, 0
+    )
+  )
+```
+
+    Error in df %>% mutate(across(c(jew_pct, arab_pct, muslim_pct, christ_pct, : could not find function "%>%"
+
+## Create factor variables
+
+``` r
+df <- df %>% 
+  mutate(
+    across(
+      c(
+        district,
+        type
+      ),
+      as_factor
+    )
+  )
+```
+
+    Error in df %>% mutate(across(c(district, type), as_factor)): could not find function "%>%"
+
+## Round relevant numeric variables
+
+``` r
+df <- df %>% 
+  mutate(
+    across(
+      c(
+        distance_ta,
+        dep_ratio,
+        income_wage,
+        income_freelance,
+        ends_with("pct")
+      ),
+      round, 1
+    )
+  )
+```
+
+    Error in df %>% mutate(across(c(distance_ta, dep_ratio, income_wage, income_freelance, : could not find function "%>%"
