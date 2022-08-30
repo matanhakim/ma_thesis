@@ -16,10 +16,10 @@ editor_options:
 df <- df %>% 
   select(
     name = 1,
+    muni_id,
     district = 3,
     type = 4,
     distance_ta = 5,
-    area = 11,
     pop = 13,
     jew_pct = 14,
     arab_pct = 16,
@@ -48,7 +48,6 @@ df <- df %>%
     bagrut_pct = 154,
     bagrut_uni_pct = 155,
     high_educ_35_55_pct = 156,
-    high_educ_enter_8_pct = 157,
     ses_c = 231,
     ses_i = 232,
     ses_r = 233,
@@ -58,3 +57,81 @@ df <- df %>%
     last_col(5:0)
   )
 ```
+# Transform types and problematic values of variables
+## Change relevant charachter variables to numeric
+```{r}
+df <- df %>% 
+  mutate(
+    across(
+      c(
+        distance_ta,
+        jew_pct,
+        arab_pct,
+        muslim_pct,
+        christ_pct,
+        druze_pct,
+        immig_1990_pct,
+      ),
+      as.numeric
+    )
+  )
+
+# Check which variables have NA's after the coercion to numeric variable
+check <- df %>% 
+  summarise(
+    across(
+      everything(),
+      ~sum(is.na(.))
+    )
+  )
+```
+## Replace Na's with 0's
+except for distance from Tel Aviv, which is NA for regional councils
+```{r}
+df <- df %>% 
+  mutate(
+    across(
+      c(
+        jew_pct,
+        arab_pct,
+        muslim_pct,
+        christ_pct,
+        druze_pct,
+        immig_1990_pct,
+      ),
+      replace_na, 0
+    )
+  )
+```
+
+## Create factor variables
+```{r}
+df <- df %>% 
+  mutate(
+    across(
+      c(
+        district,
+        type
+      ),
+      as_factor
+    )
+  )
+```
+
+## Round relevant numeric variables
+```{r}
+df <- df %>% 
+  mutate(
+    across(
+      c(
+        distance_ta,
+        dep_ratio,
+        income_wage,
+        income_freelance,
+        ends_with("pct")
+      ),
+      round, 1
+    )
+  )
+```
+

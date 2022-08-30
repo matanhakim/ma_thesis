@@ -164,8 +164,8 @@ get_elect_pct <- function(data){
     ) %>% 
     group_by(muni_id) %>% 
     summarize(
-      likud_pct = sum(halikud) / sum(good_votes),
-      coal_pct = sum(
+      likud_pct = 100 * sum(halikud) / sum(good_votes),
+      coal_pct = 100 * sum(
         yahadut_hatorah +
         habait_hayehudi +
         kulanu +
