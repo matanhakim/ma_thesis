@@ -135,3 +135,236 @@ df <- df %>%
   )
 ```
 
+# Explore and transform variables
+## District
+```{r}
+df %>% 
+  ggplot(aes(district)) +
+  geom_bar() +
+  geom_text(aes(label = ..count..), stat = "count", vjust = 1.5, colour = "white")
+```
+## type
+```{r}
+df %>% 
+  ggplot(aes(type)) +
+  geom_bar() +
+  geom_text(aes(label = ..count..), stat = "count", vjust = 1.5, colour = "white")
+```
+
+## Population (pop)
+```{r}
+df %>% 
+  ggplot(aes(pop)) +
+  geom_histogram(aes(y = ..density..)) +
+  geom_density()
+```
+```{r}
+df %>% 
+  ggplot(aes(log10(pop))) +
+  geom_histogram(aes(y = ..density..)) +
+  geom_density()
+```
+As seen, the population variable is right-skewed. after a log transformation, the variable is more normally distributed.
+## Sector (Jewish/Arab/Mixed)
+```{r}
+df %>% 
+  ggplot(aes(jew_pct)) +
+  geom_histogram(aes(y = ..density..)) +
+  geom_density()
+```
+As seen, the distribution of the jewish population has 3 modes, and therfore we will create a new categorical variable for sector.
+Currently the variable is defined as "Arab" if there are more than 50% Arabs, "Mixed" if there are between 10%-50% Arabs, and "Jewish" otherwise.
+I consider making a "special sector" variable of some sort, to also include Hardei and Druze. Should it be another variable or added to the sector variable?
+```{r}
+df <- df %>% 
+  mutate(
+    sector = as_factor(case_when(
+      arab_pct > 50 ~ "arab",
+      arab_pct > 10 ~ "mixed",
+      TRUE ~ "jewish"
+    ))
+  )
+
+df %>% 
+  count(sector)
+```
+## Age distribution
+```{r}
+df %>% 
+  ggplot(aes(age_65_plus_pct)) +
+  geom_histogram(aes(y = ..density..)) +
+  geom_density()
+
+df %>% 
+  ggplot(aes(age_0_17_pct)) +
+  geom_histogram(aes(y = ..density..)) +
+  geom_density()
+```
+It is not clear which one is better, but they are both somewhat normally distributed with some right-skewness. Let's check if sector has an impact on the distribution.
+```{r}
+df %>% 
+  pivot_longer(c(age_0_17_pct, age_65_plus_pct), names_to = "var", values_to = "value") %>% 
+  ggplot(aes(value)) + 
+  geom_histogram(aes(y = ..density..)) +
+  geom_density() +
+  facet_grid(sector ~ var)
+```
+It seems like the distribution is not too much effected by sector. No need to give it a special treatment.
+
+## Dependance ratio
+```{r}
+df %>% 
+  ggplot(aes(dep_ratio)) +
+  geom_histogram(aes(y = ..density..)) +
+  geom_density()
+```
+The dependence ratio variable is right-skewed and it is possible to perform a log10 transformation, but as of now it does not seem to add more useful information to the age distribution variables, so no need for transformation.
+
+## Percent of immigrants that came to Israel after 1990 from the population
+```{r}
+df %>% 
+  ggplot(aes(immig_1990_pct)) +
+  geom_histogram(aes(y = ..density..)) +
+  geom_density()
+```
+It seems that the variable is right-skewed, but it is probably due to the fact that Arab municipalities don't have lots of immigrants. Let's check this hypothesis.
+```{r}
+df %>% 
+  ggplot(aes(immig_1990_pct)) +
+  geom_histogram(aes(y = ..density..)) +
+  geom_density() +
+  facet_wrap(~ sector, scales = "free_y")
+```
+First, it seems that indeed Arab municipalities don't have immigrants. This makes it a good candidate for interaction. Second, the variable is still right-skewed, even only for jewish municipalities. Let's try log10 transformation.
+```{r}
+df %>% 
+  ggplot(aes(log10(immig_1990_pct))) +
+  geom_histogram(aes(y = ..density..)) +
+  geom_density() +
+  facet_wrap(~ sector, scales = "free_y")
+```
+Since a lot of municipalities, both Arab and Jewish, don't have immigrants at all, the variable is not a good candidate for log10 transformation.
+
+## Unemployment Allowance Percent
+```{r}
+df %>% 
+  ggplot(aes(unemp_allowance_pct)) +
+  geom_histogram(aes(y = ..density..)) +
+  geom_density()
+
+df %>% 
+  arrange(desc(unemp_allowance_pct)) %>% 
+  select(name, unemp_allowance_pct)
+```
+This does not seem like a good variable to determine true unemployment, for none of the top municipalities have Arab or Haredi municipalities.
+
+## Income
+```{r}
+df %>% 
+  pivot_longer(c(income_wage, income_freelance, min_wage_pct), names_to = "var", values_to = "value") %>% 
+  ggplot(aes(value)) +
+  geom_histogram(aes(y = ..density..)) +
+  geom_density() +
+  facet_wrap(~ var, scales = "free")
+```
+It seems that the percent earning under minimum wage is pretty normally distributed, but average income of wage workers is right-skewed. The freelance income is less relevant for the much lower number of freelancers. Let's try log10 transformation on wage income.
+```{r}
+df %>% 
+  ggplot(aes(log10(income_wage))) +
+  geom_histogram(aes(y = ..density..)) +
+  geom_density()
+```
+This is much better, a log10 transformation is needed for wage income.
+
+## Education
+Let's begin with checking correlation between the three education variables
+```{r}
+df %>% 
+  select(bagrut_pct, bagrut_uni_pct, high_educ_35_55_pct) %>% 
+  cor()
+```
+It seems that the Bagrut variables are highly correlated, but less so with the higher education variable. Let's check it visually.
+```{r}
+df %>% 
+  ggplot(aes(bagrut_pct, bagrut_uni_pct)) +
+  geom_point()
+
+df %>% 
+  ggplot(aes(bagrut_pct, high_educ_35_55_pct)) +
+  geom_point()
+
+df %>% 
+  ggplot(aes(bagrut_uni_pct, high_educ_35_55_pct)) +
+  geom_point()
+```
+The charts reaffirm this understanding. LEt's examine the distribution of these variables.
+```{r}
+df %>% 
+  pivot_longer(c(bagrut_pct, bagrut_uni_pct, high_educ_35_55_pct), names_to = "var", values_to = "value") %>% 
+  ggplot(aes(value)) +
+  geom_histogram(aes(y = ..density..)) +
+  geom_density() +
+  facet_wrap(~ var, scales = "free")
+```
+The bagrut variables are left-skewed while the higher education variable is more bimodal and somewhat evenly distributed. We will opt to use the higher education variable.
+
+## CBS clusters and indexes
+```{r}
+df %>% 
+  pivot_longer(c(starts_with("ses"), starts_with("peri")), names_to = "var", values_to = "value") %>% 
+  ggplot(aes(value)) +
+  geom_histogram(aes(y = ..density..)) +
+  geom_density() + 
+  facet_wrap(~ var, scales = "free")
+```
+Obviously, the rank variable is evenly distributed by definition. We will use the index variable as it is normally distributed and carries the most information with it.
+
+## Voting
+```{r}
+df %>% 
+  pivot_longer(c(likud_pct, coal_pct), names_to = "var", values_to = "value") %>% 
+  ggplot(aes(value)) +
+  geom_histogram(aes(y = ..density..)) +
+  geom_density() +
+  facet_wrap(~ var, scales = "free")
+```
+It seems that both voting variables are left skewed. this might be because of ineraction with sector variable. Let's visualise this.
+```{r}
+df %>% 
+  pivot_longer(c(likud_pct, coal_pct), names_to = "var", values_to = "value") %>% 
+  ggplot(aes(value)) +
+  geom_histogram(aes(y = ..density..)) +
+  geom_density() +
+  facet_grid(var ~ sector, scales = "free")
+```
+It seems that indeed the voting variables are almost always very low in the Arab sector. Also, this suggests that the "mixed" value of the sector variable should be otherwise calculated if we check interaction in the model to prevent overfitting. This is because There are only 13 mixed municipalities. Again. it is possible to create a "special sector" variable alongside Druze and Haredi.
+
+## Budget
+The budget variables would probably be right-skewed, as they are very much affected by the size of the population.
+```{r}
+df %>% 
+  pivot_longer(starts_with("budget"), names_to = "var", values_to = "value") %>% 
+  ggplot(aes(value)) +
+  geom_histogram(aes(y = ..density..)) +
+  geom_density() +
+  facet_wrap(~ var)
+```
+This indeed seems like right-skewness. Let's try to divide the budget by population.
+```{r}
+df %>% 
+  pivot_longer(starts_with("budget"), names_to = "var", values_to = "value") %>% 
+  ggplot(aes(value / pop)) +
+  geom_histogram(aes(y = ..density..)) +
+  geom_density() +
+  facet_wrap(~ var)
+```
+After normalizing by population size the distribution is even more right-skewed. Let's try a log10 transformation.
+```{r}
+df %>% 
+  pivot_longer(starts_with("budget"), names_to = "var", values_to = "value") %>% 
+  ggplot(aes(log10(1 + value / pop))) +
+  geom_histogram(aes(y = ..density..)) +
+  geom_density() +
+  facet_wrap(~ var)
+```
+This is much better and the seemingly best transformation to use. important to note that 1 was added to the calculation to prevent log of 0.
