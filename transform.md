@@ -24,9 +24,10 @@ Thesis - Tranform Variables
     id="toc-round-relevant-numeric-variables"><span
     class="toc-section-number">3.4</span> Round relevant numeric
     variables</a>
-- <a href="#explore-and-transform-variables"
-  id="toc-explore-and-transform-variables"><span
-  class="toc-section-number">4</span> Explore and transform variables</a>
+- <a href="#explore-distribution-of-variables"
+  id="toc-explore-distribution-of-variables"><span
+  class="toc-section-number">4</span> Explore distribution of
+  variables</a>
   - <a href="#district" id="toc-district"><span
     class="toc-section-number">4.1</span> District</a>
   - <a href="#type" id="toc-type"><span
@@ -56,6 +57,12 @@ Thesis - Tranform Variables
     class="toc-section-number">4.11</span> Voting</a>
   - <a href="#budget" id="toc-budget"><span
     class="toc-section-number">4.12</span> Budget</a>
+- <a href="#transform-variables" id="toc-transform-variables"><span
+  class="toc-section-number">5</span> Transform variables</a>
+- <a href="#drop-unneccesary-variables-from-the-data-frame"
+  id="toc-drop-unneccesary-variables-from-the-data-frame"><span
+  class="toc-section-number">6</span> Drop unneccesary variables from the
+  data frame</a>
 
 # Load libraries
 
@@ -210,7 +217,7 @@ df <- df %>%
 
     Error in UseMethod("mutate"): no applicable method for 'mutate' applied to an object of class "function"
 
-# Explore and transform variables
+# Explore distribution of variables
 
 ## District
 
@@ -251,6 +258,9 @@ df %>%
     !   You're passing a function as global data.
       Have you misspelled the `data` argument in `ggplot()`
 
+The population variable is right-skewed. Let’s exaimne if a log10
+transformation would help.
+
 ``` r
 df %>% 
   ggplot(aes(log10(pop))) +
@@ -278,12 +288,12 @@ df %>%
       Have you misspelled the `data` argument in `ggplot()`
 
 As seen, the distribution of the jewish population has 3 modes, and
-therfore we will create a new categorical variable for sector. Currently
-the variable is defined as “Arab” if there are more than 50% Arabs,
-“Mixed” if there are between 10%-50% Arabs, and “Jewish” otherwise. I
-consider making a “special sector” variable of some sort, to also
-include Hardei and Druze. Should it be another variable or added to the
-sector variable?
+therefore we will create a new categorical variable for sector.
+Currently the variable is defined as “Arab” if there are more than 50%
+Arabs, “Mixed” if there are between 10%-50% Arabs, and “Jewish”
+otherwise. I consider making a “special sector” variable of some sort,
+to also include Haredi and Druze. Should it be another variable or added
+to the sector variable?
 
 ``` r
 df <- df %>% 
@@ -300,10 +310,14 @@ df <- df %>%
 
 ``` r
 df %>% 
-  count(sector)
+  ggplot(aes(sector)) +
+  geom_bar() +
+  geom_text(aes(label = ..count..), stat = "count", vjust = 1.5, colour = "white")
 ```
 
-    Error in UseMethod("count"): no applicable method for 'count' applied to an object of class "function"
+    Error in `ggplot()`:
+    !   You're passing a function as global data.
+      Have you misspelled the `data` argument in `ggplot()`
 
 ## Age distribution
 
@@ -396,7 +410,7 @@ df %>%
 
 First, it seems that indeed Arab municipalities don’t have immigrants.
 This makes it a good candidate for interaction. Second, the variable is
-still right-skewed, even only for jewish municipalities. Let’s try log10
+still right-skewed, even only for Jewish municipalities. Let’s try log10
 transformation.
 
 ``` r
@@ -411,9 +425,10 @@ df %>%
     !   You're passing a function as global data.
       Have you misspelled the `data` argument in `ggplot()`
 
-Since a lot of municipalities, both Arab and Jewish, don’t have
-immigrants at all, the variable is not a good candidate for log10
-transformation.
+Since a lot of Arab municipalities don’t have immigrants at all, the
+variable is not a good candidate for using it in the model in itself. We
+will use a log10 transformation but only with interaction with sector
+variable.
 
 ## Unemployment Allowance Percent
 
@@ -580,9 +595,9 @@ df %>%
 
 It seems that indeed the voting variables are almost always very low in
 the Arab sector. Also, this suggests that the “mixed” value of the
-sector variable should be otherwise calculated if we check interaction
-in the model to prevent overfitting. This is because There are only 13
-mixed municipalities. Again. it is possible to create a “special sector”
+sector variable should be omitted if we check interaction in the model
+to prevent overfitting. This is because There are only 13 mixed
+municipalities. Again. it is possible to create a “special sector”
 variable alongside Druze and Haredi.
 
 ## Budget
@@ -632,3 +647,52 @@ df %>%
 This is much better and the seemingly best transformation to use.
 important to note that 1 was added to the calculation to prevent log of
 0.
+
+# Transform variables
+
+``` r
+df <- df %>% 
+  mutate(
+    pop_log10 = log10(pop),
+    immig_1990_pct_log10 = case_when(
+      immig_1990_pct == 0 ~ 0,
+      TRUE ~ log10(immig_1990_pct)
+    ),
+    income_wage_log10 = log10(income_wage),
+    budget_approved_capita_log10 = log10(1 + budget_approved / pop),
+    sector = as_factor(case_when(
+      arab_pct > 50 ~ "arab",
+      TRUE ~ "jewish"
+    ))
+  )
+```
+
+    Error in UseMethod("mutate"): no applicable method for 'mutate' applied to an object of class "function"
+
+# Drop unneccesary variables from the data frame
+
+``` r
+df <- df %>% 
+  select(
+    -c(
+      district,
+      distance_ta,
+      pop,
+      jew_pct:druze_pct,
+      age_0_4_pct:age_60_64_pct,
+      age_75_plus_pct,
+      dep_ratio,
+      immig_1990_pct,
+      unemp_allowance_pct,
+      wage_num,
+      freelance_num:income_freelance,
+      bagrut_pct:bagrut_uni_pct,
+      ses_c, ses_r,
+      peri_c, peri_r,
+      pot_votes:good_votes,
+      budget_approved:budget_paid
+    )
+  )
+```
+
+    Error in UseMethod("select"): no applicable method for 'select' applied to an object of class "function"
