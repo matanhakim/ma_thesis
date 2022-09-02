@@ -1,0 +1,50 @@
+---
+title: "Thesis - Model"
+toc: true
+number-sections: true
+code-fold: true
+warning: false
+output: false
+error: true
+format: gfm
+editor_options: 
+  markdown: 
+    wrap: sentence
+---
+
+# Load libraries
+
+```{r}
+library(tidyverse)
+library(broom)
+library(ggfortify)
+```
+
+# First varaible to start with
+
+Let's check which single variable is best to start with.
+
+```{r}
+df_mdl1 <- df %>% 
+  select(-c(name, muni_id, budget_approved_capita_log10)) %>% 
+  map(~ lm(df$budget_approved_capita_log10 ~ .x, data = df)) %>% 
+  map(glance) %>% 
+  map("r.squared") %>% 
+  as_tibble() %>% 
+  pivot_longer(everything() ,names_to = "var", values_to = "r.squared") %>% 
+  arrange(desc(r.squared))
+
+df_mdl1
+```
+
+Looks like the population variable has the best correlation with the approved SELA budget.
+Let's examine how it fairs with linear regression assumptions.
+
+```{r}
+mdl1_pop <- lm(df$budget_approved_capita_log10 ~ df$pop_log10, data = df)
+df %>% 
+  ggplot(aes(pop_log10, budget_approved_capita_log10)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+# autoplot(mdl1_pop)
+```
