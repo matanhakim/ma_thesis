@@ -462,6 +462,7 @@ df %>%
 
 This is much better and the seemingly best transformation to use.
 important to note that 1 was added to the calculation to prevent log of 0.
+Nevertheless, we will still keep the original budget_approved variable for comparison.
 
 # Transform variables
 
@@ -502,7 +503,9 @@ df <- df %>%
       ses_c, ses_r,
       peri_c, peri_r,
       pot_votes:good_votes,
-      budget_approved:budget_paid
+      budget_paid
     )
+  ) %>% 
+  relocate(budget_approved, .after = last_col())
   )
 ```

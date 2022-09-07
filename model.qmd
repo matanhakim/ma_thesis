@@ -16,16 +16,16 @@ editor_options:
 
 ```{r}
 library(tidyverse)
-library(broom)
+library(tidymodels)
+library(corrr)
 library(ggfortify)
 ```
 
 # First varaible to start with
 
 Let's check which single variable is best to start with.
-
 ```{r}
-df_mdl1 <- df %>% 
+df_mdl1a <- df %>% 
   select(-c(name, muni_id, budget_approved_capita_log10)) %>% 
   map(~ lm(df$budget_approved_capita_log10 ~ .x, data = df)) %>% 
   map(glance) %>% 
@@ -34,17 +34,183 @@ df_mdl1 <- df %>%
   pivot_longer(everything() ,names_to = "var", values_to = "r.squared") %>% 
   arrange(desc(r.squared))
 
-df_mdl1
+df_mdl1b <- df %>% 
+  select(-c(name, muni_id, budget_approved)) %>% 
+  map(~ lm(df$budget_approved ~ .x, data = df)) %>% 
+  map(glance) %>% 
+  map("r.squared") %>% 
+  as_tibble() %>% 
+  pivot_longer(everything() ,names_to = "var", values_to = "r.squared") %>% 
+  arrange(desc(r.squared))
+
+df_mdl1a
+df_mdl1b
+
 ```
 
-Looks like the population variable has the best correlation with the approved SELA budget.
+Looks like the population variable has the best correlation with the transformed approved SELA budget variable.
 Let's examine how it fairs with linear regression assumptions.
 
 ```{r}
-mdl1_pop <- lm(df$budget_approved_capita_log10 ~ df$pop_log10, data = df)
 df %>% 
   ggplot(aes(pop_log10, budget_approved_capita_log10)) +
   geom_point() +
   geom_smooth(method = "lm", se = FALSE)
-# autoplot(mdl1_pop)
+```
+This seems like a plain result of the transformation itself, and not a result of a correlation between variables.
+from now on we will examine the untransformed SELA budget variable.
+Let's examine the same plot for the untransformed variable.
+```{r}
+df %>% 
+  ggplot(aes(pop_log10, budget_approved)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+```
+This makes more sense. Also. it uncovers two more patterns we will try to identify: First, it seems like municipalities are grouped by some way, as noted in the dense dotted line-like groups. Second, it seems there are two separate linear trends.
+Because the log-transformed variable is no longer necessary, we will drop it.
+```{r}
+df <- df %>% 
+  select(-budget_approved_capita_log10)
+```
+
+
+Because we are now working with the original SELA budget variable, Let's examine the most correlated variables.
+as it seems, the 4 most correlated variables are socio-economic variables.
+Let's start by examining their multicollinearity.
+```{r}
+df %>% 
+  select(
+    income_wage_log10, ses_i, high_educ_35_55_pct, min_wage_pct
+  ) %>% 
+  correlate()
+```
+As it Seems, the four of them are highly correlated with one another. Since the SES variable is already an index variable taking into account multiple different variables, and since we do not have a lot of observations, we will continue to use only the SES variable.
+Let's get rid of the unnecessary varaibles.
+```{r}
+df <- df %>% 
+  select(-c(
+    min_wage_pct,
+    high_educ_35_55_pct,
+    income_wage_log10
+  ))
+```
+
+Let's visualize its correlation with SELA budget.
+```{r}
+df %>% 
+  ggplot(aes(ses_i, budget_approved)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+
+mdl1 <- lm(budget_approved ~ ses_i, data = df)
+mdl1 %>% glance()
+```
+This seems good enough, let's continue to the second variable.
+
+# Second variable
+Let's see which second variable is best for the model.
+```{r}
+df_mdl2 <- df %>% 
+  select(-c(name, muni_id, ses_i)) %>% 
+  map(~ lm(budget_approved ~ .x + ses_i, data = df)) %>% 
+  map(glance) %>% 
+  map("r.squared") %>% 
+  as_tibble() %>% 
+  pivot_longer(everything() ,names_to = "var", values_to = "r.squared") %>% 
+  arrange(desc(r.squared))
+
+df_mdl2
+```
+Seems like the municipality type is the best second variable.
+Let's check for significance, visualise and examine the model.
+```{r}
+mdl2 <- lm(budget_approved ~ ses_i + type, data = df)
+
+anv_21 <- anova(mdl1, mdl2)
+anv_21
+anv_p_value <- anv_21 %>% tidy() %>%  slice_tail() %>% pull(p.value)
+
+rsq_1 <- mdl1 %>% rsquare(df)
+rsq_2 <- mdl2 %>% rsquare(df)
+
+df_predict <- data_grid(
+  df, ses_i, type, .model = mdl2
+) %>% 
+  add_predictions(mdl2)
+
+df %>% 
+  ggplot(aes(ses_i, budget_approved)) +
+  geom_point() +
+  geom_line(data = df_predict, aes(y = pred), size = 1) +
+  facet_wrap(~ type)
+
+mdl2 %>% glance()
+mdl2 %>% tidy()
+```
+The second model has an R-squared value of `r rsq_2` that represents an R-squared change of `r rsq_2 - rsq_1` with a confidence level p-value of `r anv_p_value`.
+
+# Third variable
+
+```{r}
+df_mdl3 <- df %>% 
+  select(-c(name, muni_id, ses_i, type)) %>% 
+  map(~ lm(budget_approved ~ .x + ses_i + type, data = df)) %>% 
+  map(glance) %>% 
+  map("r.squared") %>% 
+  as_tibble() %>% 
+  pivot_longer(everything() ,names_to = "var", values_to = "r.squared") %>% 
+  arrange(desc(r.squared))
+
+df_mdl3
+```
+The next best variable is peripheral index.
+Let's check if it works.
+```{r}
+mdl3 <- lm(budget_approved ~ ses_i + type + peri_i, data = df)
+
+anv_32 <- anova(mdl2, mdl3)
+anv_32
+anv_p_value <- anv_32 %>% tidy() %>%  slice_tail() %>% pull(p.value)
+
+rsq_3 <- mdl3 %>% rsquare(df)
+
+df_predict <- data_grid(
+  df, ses_i, type, peri_i, .model = mdl3
+) %>% 
+  add_predictions(mdl3)
+
+df %>% 
+  ggplot(aes(ses_i, budget_approved)) +
+  geom_point(aes(color = peri_i)) +
+  geom_smooth(method = "lm", se = FALSE) +
+#  geom_line(data = df_predict, aes(y = pred), size = 1) +
+  facet_wrap(~ type)
+
+mdl3 %>% glance()
+mdl3 %>% tidy()
+```
+
+
+
+
+
+# Trying to create a function for next variable diagnosis
+We will create a function that gets a vector of variables that already went into the model, and finds the best next variable to insert to the model.
+
+```{r}
+calc_next_rsq <- function(data, vars = NULL){
+  
+  frmla <- as.formula(
+    paste("budget_approved ~ .x", vars, sep = " + ")
+  )
+  
+  data %>% 
+    select(-c(name, muni_id, {{ vars }})) %>% 
+    map(~ lm(frmla, data = data)) %>% 
+    map(glance) %>% 
+    map("r.squared") %>% 
+    as_tibble() %>% 
+    pivot_longer(everything() ,names_to = "var", values_to = "r.squared") %>% 
+    arrange(desc(r.squared))
+}
 ```
