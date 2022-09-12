@@ -73,7 +73,7 @@ library(tidyverse)
 # Select and name all relevant variables
 
 ``` r
-df <- df %>% 
+df <- raw_df %>% 
   select(
     name = 1,
     muni_id,
@@ -118,7 +118,7 @@ df <- df %>%
   )
 ```
 
-    Error in UseMethod("select"): no applicable method for 'select' applied to an object of class "function"
+    Error in select(., name = 1, muni_id, district = 3, type = 4, distance_ta = 5, : object 'raw_df' not found
 
 # Transform types and problematic values of variables
 
@@ -646,7 +646,8 @@ df %>%
 
 This is much better and the seemingly best transformation to use.
 important to note that 1 was added to the calculation to prevent log of
-0.
+0. Nevertheless, we will still keep the original budget_approved
+variable for comparison.
 
 # Transform variables
 
@@ -689,9 +690,10 @@ df <- df %>%
       ses_c, ses_r,
       peri_c, peri_r,
       pot_votes:good_votes,
-      budget_approved:budget_paid
+      budget_paid
     )
-  )
+  ) %>% 
+  relocate(budget_approved, .after = last_col())
 ```
 
     Error in UseMethod("select"): no applicable method for 'select' applied to an object of class "function"

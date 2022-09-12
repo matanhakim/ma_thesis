@@ -17,6 +17,7 @@ editor_options:
 ```{r}
 library(tidyverse)
 library(tidymodels)
+library(modelr)
 library(corrr)
 library(ggfortify)
 ```
@@ -74,7 +75,7 @@ df <- df %>%
 ```
 
 
-Because we are now working with the original SELA budget variable, Let's examine the most correlated variables.
+Because we are now working with the original SELA budget variable, Let's examine the most correlated variables with the outcome variable.
 as it seems, the 4 most correlated variables are socio-economic variables.
 Let's start by examining their multicollinearity.
 ```{r}
@@ -128,7 +129,7 @@ mdl2 <- lm(budget_approved ~ ses_i + type, data = df)
 
 anv_21 <- anova(mdl1, mdl2)
 anv_21
-anv_p_value <- anv_21 %>% tidy() %>%  slice_tail() %>% pull(p.value)
+anv_21_p_value <- anv_21 %>% tidy() %>%  slice_tail() %>% pull(p.value)
 
 rsq_1 <- mdl1 %>% rsquare(df)
 rsq_2 <- mdl2 %>% rsquare(df)
@@ -147,7 +148,7 @@ df %>%
 mdl2 %>% glance()
 mdl2 %>% tidy()
 ```
-The second model has an R-squared value of `r rsq_2` that represents an R-squared change of `r rsq_2 - rsq_1` with a confidence level p-value of `r anv_p_value`.
+The second model has an R-squared value of `r rsq_2` that represents an R-squared change of `r rsq_2 - rsq_1` with a confidence level p-value of `r anv_21_p_value`.
 
 # Third variable
 
@@ -170,7 +171,7 @@ mdl3 <- lm(budget_approved ~ ses_i + type + peri_i, data = df)
 
 anv_32 <- anova(mdl2, mdl3)
 anv_32
-anv_p_value <- anv_32 %>% tidy() %>%  slice_tail() %>% pull(p.value)
+anv_32_p_value <- anv_32 %>% tidy() %>%  slice_tail() %>% pull(p.value)
 
 rsq_3 <- mdl3 %>% rsquare(df)
 
@@ -189,10 +190,51 @@ df %>%
 mdl3 %>% glance()
 mdl3 %>% tidy()
 ```
+The third model has an R-squared value of `r rsq_3` that represents an R-squared change of `r rsq_3 - rsq_2` with a confidence level p-value of `r anv_32_p_value`.
 
+# Fourth variable
+```{r}
+df_mdl4 <- df %>% 
+  select(-c(name, muni_id, ses_i, type, peri_i)) %>% 
+  map(~ lm(budget_approved ~ .x + ses_i + type + peri_i, data = df)) %>% 
+  map(glance) %>% 
+  map("r.squared") %>% 
+  as_tibble() %>% 
+  pivot_longer(everything() ,names_to = "var", values_to = "r.squared") %>% 
+  arrange(desc(r.squared))
 
+df_mdl4
+```
+The next best varaibale is population, which makes sense and obvously needed to be taken into account.
+```{r}
+mdl4 <- lm(budget_approved ~ ses_i + type + peri_i + pop_log10, data = df)
 
+anv_43 <- anova(mdl3, mdl4)
+anv_43
+anv_43_p_value <- anv_43 %>% tidy() %>%  slice_tail() %>% pull(p.value)
 
+rsq_4 <- mdl4 %>% rsquare(df)
+
+mdl4 %>% glance()
+mdl4 %>% tidy()
+```
+The fourth model has an R-squared value of `r rsq_4` that represents an R-squared change of `r rsq_4 - rsq_3` with a confidence level p-value of `r anv_43_p_value`.
+
+# Fifth variable
+```{r}
+df_mdl5 <- df %>% 
+  select(-c(name, muni_id, ses_i, type, peri_i, pop_log10)) %>% 
+  map(~ lm(budget_approved ~ .x + ses_i + type + peri_i + pop_log10, data = df)) %>% 
+  map(glance) %>% 
+  map("r.squared") %>% 
+  as_tibble() %>% 
+  pivot_longer(everything() ,names_to = "var", values_to = "r.squared") %>% 
+  arrange(desc(r.squared))
+
+df_mdl5
+```
+
+It seems like this is as far as we can get.
 
 # Trying to create a function for next variable diagnosis
 We will create a function that gets a vector of variables that already went into the model, and finds the best next variable to insert to the model.

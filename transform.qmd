@@ -21,7 +21,7 @@ library(tidyverse)
 # Select and name all relevant variables
 
 ```{r}
-df <- df %>% 
+df <- raw_df %>% 
   select(
     name = 1,
     muni_id,
@@ -507,5 +507,4 @@ df <- df %>%
     )
   ) %>% 
   relocate(budget_approved, .after = last_col())
-  )
 ```

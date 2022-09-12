@@ -266,7 +266,7 @@ elec_df <- read_elec_general(elec_url) %>%  # Reading the general elections raw 
 budget_df <- get_sela_data(2018) %>% # Reading and manipulating Sela budget data by year and municipality
   match_budget_muni() # Adding the cbs municipality id
 
-df <- muni_df %>% 
+raw_df <- muni_df %>% 
   left_join(elec_df, by = "muni_id") %>% 
   left_join(budget_df, by = c("muni_id" = "cbs_id")) %>% 
   mutate( # Change NA's (unbudgeted or no voters municipalities) to 0's
