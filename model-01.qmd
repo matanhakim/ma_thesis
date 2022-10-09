@@ -26,18 +26,18 @@ library(ggfortify)
 
 Let's check which single variable is best to start with.
 ```{r}
-df_mdl1a <- df %>% 
+df_mdl1a <- mdl_df %>% 
   select(-c(name, muni_id, budget_approved_capita_log10)) %>% 
-  map(~ lm(df$budget_approved_capita_log10 ~ .x, data = df)) %>% 
+  map(~ lm(mdl_df$budget_approved_capita_log10 ~ .x, data = mdl_df)) %>% 
   map(glance) %>% 
   map("r.squared") %>% 
   as_tibble() %>% 
   pivot_longer(everything() ,names_to = "var", values_to = "r.squared") %>% 
   arrange(desc(r.squared))
 
-df_mdl1b <- df %>% 
+df_mdl1b <- mdl_df %>% 
   select(-c(name, muni_id, budget_approved)) %>% 
-  map(~ lm(df$budget_approved ~ .x, data = df)) %>% 
+  map(~ lm(mdl_df$budget_approved ~ .x, data = mdl_df)) %>% 
   map(glance) %>% 
   map("r.squared") %>% 
   as_tibble() %>% 
@@ -53,7 +53,7 @@ Looks like the population variable has the best correlation with the transformed
 Let's examine how it fairs with linear regression assumptions.
 
 ```{r}
-df %>% 
+mdl_df %>% 
   ggplot(aes(pop_log10, budget_approved_capita_log10)) +
   geom_point() +
   geom_smooth(method = "lm", se = FALSE)
@@ -62,7 +62,7 @@ This seems like a plain result of the transformation itself, and not a result of
 from now on we will examine the untransformed SELA budget variable.
 Let's examine the same plot for the untransformed variable.
 ```{r}
-df %>% 
+mdl_df %>% 
   ggplot(aes(pop_log10, budget_approved)) +
   geom_point() +
   geom_smooth(method = "lm", se = FALSE)
@@ -70,7 +70,7 @@ df %>%
 This makes more sense. Also. it uncovers two more patterns we will try to identify: First, it seems like municipalities are grouped by some way, as noted in the dense dotted line-like groups. Second, it seems there are two separate linear trends.
 Because the log-transformed variable is no longer necessary, we will drop it.
 ```{r}
-df <- df %>% 
+mdl_df <- mdl_df %>% 
   select(-budget_approved_capita_log10)
 ```
 
@@ -79,16 +79,16 @@ Because we are now working with the original SELA budget variable, Let's examine
 as it seems, the 4 most correlated variables are socio-economic variables.
 Let's start by examining their multicollinearity.
 ```{r}
-df %>% 
+mdl_df %>% 
   select(
-    income_wage_log10, ses_i, high_educ_35_55_pct, min_wage_pct
+    income_wage_log10, ses_i_2015, high_educ_35_55_pct, min_wage_pct
   ) %>% 
   correlate()
 ```
 As it Seems, the four of them are highly correlated with one another. Since the SES variable is already an index variable taking into account multiple different variables, and since we do not have a lot of observations, we will continue to use only the SES variable.
 Let's get rid of the unnecessary varaibles.
 ```{r}
-df <- df %>% 
+mdl_df <- mdl_df %>% 
   select(-c(
     min_wage_pct,
     high_educ_35_55_pct,
@@ -98,12 +98,12 @@ df <- df %>%
 
 Let's visualize its correlation with SELA budget.
 ```{r}
-df %>% 
-  ggplot(aes(ses_i, budget_approved)) +
+mdl_df %>% 
+  ggplot(aes(ses_i_2015, budget_approved)) +
   geom_point() +
   geom_smooth(method = "lm", se = FALSE)
 
-mdl1 <- lm(budget_approved ~ ses_i, data = df)
+mdl1 <- lm(budget_approved ~ ses_i_2015, data = mdl_df)
 mdl1 %>% glance()
 ```
 This seems good enough, let's continue to the second variable.
@@ -111,9 +111,9 @@ This seems good enough, let's continue to the second variable.
 # Second variable
 Let's see which second variable is best for the model.
 ```{r}
-df_mdl2 <- df %>% 
-  select(-c(name, muni_id, ses_i)) %>% 
-  map(~ lm(budget_approved ~ .x + ses_i, data = df)) %>% 
+df_mdl2 <- mdl_df %>% 
+  select(-c(name, muni_id, ses_i_2015)) %>% 
+  map(~ lm(budget_approved ~ .x + ses_i_2015, data = mdl_df)) %>% 
   map(glance) %>% 
   map("r.squared") %>% 
   as_tibble() %>% 
@@ -125,22 +125,22 @@ df_mdl2
 Seems like the municipality type is the best second variable.
 Let's check for significance, visualise and examine the model.
 ```{r}
-mdl2 <- lm(budget_approved ~ ses_i + type, data = df)
+mdl2 <- lm(budget_approved ~ ses_i_2015 + type, data = mdl_df)
 
 anv_21 <- anova(mdl1, mdl2)
 anv_21
 anv_21_p_value <- anv_21 %>% tidy() %>%  slice_tail() %>% pull(p.value)
 
-rsq_1 <- mdl1 %>% rsquare(df)
-rsq_2 <- mdl2 %>% rsquare(df)
+rsq_1 <- mdl1 %>% rsquare(mdl_df)
+rsq_2 <- mdl2 %>% rsquare(mdl_df)
 
 df_predict <- data_grid(
-  df, ses_i, type, .model = mdl2
+  mdl_df, ses_i_2015, type, .model = mdl2
 ) %>% 
   add_predictions(mdl2)
 
-df %>% 
-  ggplot(aes(ses_i, budget_approved)) +
+mdl_df %>% 
+  ggplot(aes(ses_i_2015, budget_approved)) +
   geom_point() +
   geom_line(data = df_predict, aes(y = pred), size = 1) +
   facet_wrap(~ type)
@@ -153,9 +153,9 @@ The second model has an R-squared value of `r rsq_2` that represents an R-square
 # Third variable
 
 ```{r}
-df_mdl3 <- df %>% 
-  select(-c(name, muni_id, ses_i, type)) %>% 
-  map(~ lm(budget_approved ~ .x + ses_i + type, data = df)) %>% 
+df_mdl3 <- mdl_df %>% 
+  select(-c(name, muni_id, ses_i_2015, type)) %>% 
+  map(~ lm(budget_approved ~ .x + ses_i_2015 + type, data = mdl_df)) %>% 
   map(glance) %>% 
   map("r.squared") %>% 
   as_tibble() %>% 
@@ -167,22 +167,22 @@ df_mdl3
 The next best variable is peripheral index.
 Let's check if it works.
 ```{r}
-mdl3 <- lm(budget_approved ~ ses_i + type + peri_i, data = df)
+mdl3 <- lm(budget_approved ~ ses_i_2015 + type + peri_i_2015, data = mdl_df)
 
 anv_32 <- anova(mdl2, mdl3)
 anv_32
 anv_32_p_value <- anv_32 %>% tidy() %>%  slice_tail() %>% pull(p.value)
 
-rsq_3 <- mdl3 %>% rsquare(df)
+rsq_3 <- mdl3 %>% rsquare(mdl_df)
 
 df_predict <- data_grid(
-  df, ses_i, type, peri_i, .model = mdl3
+  mdl_df, ses_i_2015, type, peri_i_2015, .model = mdl3
 ) %>% 
   add_predictions(mdl3)
 
-df %>% 
-  ggplot(aes(ses_i, budget_approved)) +
-  geom_point(aes(color = peri_i)) +
+mdl_df %>% 
+  ggplot(aes(ses_i_2015, budget_approved)) +
+  geom_point(aes(color = peri_i_2015)) +
   geom_smooth(method = "lm", se = FALSE) +
 #  geom_line(data = df_predict, aes(y = pred), size = 1) +
   facet_wrap(~ type)
@@ -194,9 +194,9 @@ The third model has an R-squared value of `r rsq_3` that represents an R-squared
 
 # Fourth variable
 ```{r}
-df_mdl4 <- df %>% 
-  select(-c(name, muni_id, ses_i, type, peri_i)) %>% 
-  map(~ lm(budget_approved ~ .x + ses_i + type + peri_i, data = df)) %>% 
+df_mdl4 <- mdl_df %>% 
+  select(-c(name, muni_id, ses_i_2015, type, peri_i_2015)) %>% 
+  map(~ lm(budget_approved ~ .x + ses_i_2015 + type + peri_i_2015, data = mdl_df)) %>% 
   map(glance) %>% 
   map("r.squared") %>% 
   as_tibble() %>% 
@@ -205,15 +205,15 @@ df_mdl4 <- df %>%
 
 df_mdl4
 ```
-The next best varaibale is population, which makes sense and obvously needed to be taken into account.
+The next best varaibale is population, which makes sense and obviously needed to be taken into account.
 ```{r}
-mdl4 <- lm(budget_approved ~ ses_i + type + peri_i + pop_log10, data = df)
+mdl4 <- lm(budget_approved ~ ses_i_2015 + type + peri_i_2015 + pop_log10, data = mdl_df)
 
 anv_43 <- anova(mdl3, mdl4)
 anv_43
 anv_43_p_value <- anv_43 %>% tidy() %>%  slice_tail() %>% pull(p.value)
 
-rsq_4 <- mdl4 %>% rsquare(df)
+rsq_4 <- mdl4 %>% rsquare(mdl_df)
 
 mdl4 %>% glance()
 mdl4 %>% tidy()
@@ -222,9 +222,9 @@ The fourth model has an R-squared value of `r rsq_4` that represents an R-square
 
 # Fifth variable
 ```{r}
-df_mdl5 <- df %>% 
-  select(-c(name, muni_id, ses_i, type, peri_i, pop_log10)) %>% 
-  map(~ lm(budget_approved ~ .x + ses_i + type + peri_i + pop_log10, data = df)) %>% 
+df_mdl5 <- mdl_df %>% 
+  select(-c(name, muni_id, ses_i_2015, type, peri_i_2015, pop_log10)) %>% 
+  map(~ lm(budget_approved ~ .x + ses_i_2015 + type + peri_i_2015 + pop_log10, data = mdl_df)) %>% 
   map(glance) %>% 
   map("r.squared") %>% 
   as_tibble() %>% 

@@ -1,0 +1,71 @@
+---
+title: "Thesis - Model"
+toc: true
+number-sections: true
+code-fold: true
+warning: false
+output: false
+error: true
+format: gfm
+editor_options: 
+  markdown: 
+    wrap: sentence
+---
+After failing to come up with meaningful results in model-01 attempt with a linear regression model predicting approved budget, we will now examine the different parameters correlated with varying degrees of SELA budget usage.
+
+# Load libraries
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(modelr)
+library(corrr)
+library(ggfortify)
+```
+
+# Selecting relevant variables
+```{r}
+sela_df <- df %>% 
+  select(
+    name,
+    muni_id,
+    district,
+    type,
+    pop,
+    likud_pct,
+    coal_pct,
+    ses_2013_c,
+    peri_2004_c,
+    sa_data,
+    sector,
+    starts_with("budget")
+  )
+```
+
+# Checking eligibility for both SELA budget types
+
+## Check eligibilty for SELA festivals budget type
+
+## Check eligibilty for SELA initiatives budget type
+
+## Add variables for eligibilty
+```{r}
+sela_df <- sela_df %>% 
+  mutate(
+    is_elig_fest = case_when(
+      pop > 100000 ~ FALSE,
+      ses_2013_c > 7 ~ FALSE,
+      ses_2013_c < 7 ~ TRUE,
+      type == "מועצה אזורית" & peri_2004_c <= 2 ~ TRUE,
+      TRUE ~ FALSE
+    )
+  )
+
+sela_df %>% 
+  group_by(is_elig_fest) %>% 
+  summarise(sum = sum(budget_approved_fest))
+
+check <- sela_df %>% 
+  filter(!is_elig_fest & budget_approved_fest > 0)
+```
+

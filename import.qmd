@@ -110,7 +110,7 @@ get_yishuv_muni <- function(){
       yishuv_id = str_pad(yishuv_id, width = 4, side = "left", pad = "0"),
       muni_id = case_when(
         (muni_id == "0" | muni_id == "99") ~ yishuv_id,
-        TRUE ~ muni_id
+        TRUE ~ str_pad(muni_id, width = 2, side = "left", pad = "0")
       )
     )
   
@@ -190,7 +190,7 @@ It returns the summarized data frame.
 Important to note the current url method is pretty brutal and further programming is needed here, maybe working with their API.
 
 ```{r}
-get_sela_data <- function(year_param){
+get_sela_data_open <- function(year_param){
   url <- "https://next.obudget.org/api/download?query=SELECT%20year_requested%20AS%20%22%D7%A9%D7%A0%D7%94%22%2C%20supporting_ministry%20AS%20%22%D7%9E%D7%A9%D7%A8%D7%93%22%2C%20request_type%20AS%20%22%D7%A1%D7%95%D7%92%20%D7%AA%D7%9E%D7%99%D7%9B%D7%94%22%2C%20support_title%20AS%20%22%D7%A0%D7%95%D7%A9%D7%90%22%2C%20budget_code%2C%20budget_code%20AS%20%22%D7%9E%D7%A1%D7%A4%D7%A8%20%D7%AA%D7%A7%D7%A0%D7%94%22%2C%20%27supports%2F%27%20%7C%7C%20budget_code%20%7C%7C%20%27%2F%27%20%7C%7C%20year_requested%20%7C%7C%20%27%2F%27%20%7C%7C%20entity_id%20%7C%7C%20%27%2F%27%20%7C%7C%20request_type%20AS%20item_id%2C%20coalesce(entity_name%2C%20recipient)%20as%20%22%D7%9E%D7%A7%D7%91%D7%9C%20%D7%94%D7%AA%D7%9E%D7%99%D7%9B%D7%94%22%2C%20entity_id%20as%20%22%D7%9E%D7%A1%D7%A4%D7%A8%20%D7%AA%D7%90%D7%92%D7%99%D7%93%22%2C%20%27org%2F%27%20%7C%7C%20entity_kind%20%7C%7C%20%27%2F%27%20%7C%7C%20entity_id%20as%20entity_item_id%2C%20sum(amount_approved)%20as%20%22%D7%A1%D7%94%D7%B4%D7%9B%20%D7%90%D7%95%D7%A9%D7%A8%22%2C%20sum(amount_paid)%20as%20%22%D7%A1%D7%94%D7%B4%D7%9B%20%D7%A9%D7%95%D7%9C%D7%9D%22%20FROM%20raw_supports%20WHERE%20year_requested%20%3E0%20AND%20budget_code%20%3D%20%270019420256%27%20GROUP%20BY%201%2C%202%2C%203%2C%204%2C%205%2C%206%2C%207%2C%208%2C%209%2C%2010%20order%20by%20year_requested%20desc&format=csv&filename=%D7%A1%D7%9C%20%D7%9C%D7%AA%D7%A8%D7%91%D7%95%D7%AA%20%D7%A2%D7%99%D7%A8%D7%95%D7%A0%D7%99%D7%AA__%20%D7%A4%D7%99%D7%A8%D7%95%D7%98%20%D7%9B%D7%9C%20%D7%94%D7%AA%D7%9E%D7%99%D7%9B%D7%95%D7%AA%20%D7%9E%D7%AA%D7%A7%D7%A6%D7%99%D7%91%20%D7%96%D7%94%20%D7%A9%D7%90%D7%95%D7%A9%D7%A8%D7%95%20%D7%91%20%D7%9B%D7%9C%20%D7%94%D7%A9%D7%A0%D7%99%D7%9D&headers=%D7%A0%D7%95%D7%A9%D7%90%3Aitem_link(item_id)%3B%D7%9E%D7%A1%D7%A4%D7%A8%20%D7%AA%D7%A7%D7%A0%D7%94%3Abudget_code%3Asearch_term(budget_code)%3B%D7%9E%D7%A9%D7%A8%D7%93%3B%D7%A1%D7%95%D7%92%20%D7%AA%D7%9E%D7%99%D7%9B%D7%94%3B%D7%9E%D7%A7%D7%91%D7%9C%20%D7%94%D7%AA%D7%9E%D7%99%D7%9B%D7%94%3Aitem_link(entity_item_id)%3B%D7%9E%D7%A1%D7%A4%D7%A8%20%D7%AA%D7%90%D7%92%D7%99%D7%93%3B%D7%A9%D7%A0%D7%94%3B%D7%A1%D7%94%D7%B4%D7%9B%20%D7%90%D7%95%D7%A9%D7%A8%3Anumber%3B%D7%A1%D7%94%D7%B4%D7%9B%20%D7%A9%D7%95%D7%9C%D7%9D%3Anumber"
   
   read_csv(url) %>% 
@@ -213,6 +213,52 @@ get_sela_data <- function(year_param){
     filter(year == year_param)
 
 }
+check2 <- get_sela_data_open(2018)
+```
+
+## Importing and manipulating Sela budget data from the Ministry of Culture for 2016-2019
+
+This function reads the XLSX file from the ministry of culture official website[^1], reads the specific SELA sheet, removes the first totals row, selects and renames the relevant columns, pivots the data to a longer format by year and budget type (initiatives, festivals or total), replaces NA's with 0's, filters for the needed year by parameter, and pivots back to the wider format to distinguish easily between different budget types.
+
+[^1]: https://www.gov.il/he/departments/general/ministry_support
+
+```{r}
+get_sela_data_culture <- function(year_param){
+  url <- "https://www.gov.il/BlobFolder/generalpage/ministry_support/he/%D7%AA%D7%9E%D7%99%D7%9B%D7%95%D7%AA%20%D7%94%D7%9E%D7%A9%D7%A8%D7%93%20%D7%9C%D7%92%D7%95%D7%A4%D7%99%20%D7%AA%D7%A8%D7%91%D7%95%D7%AA%202016-2019.xlsx"
+  
+  file_ext <- str_extract(url, "[0-9a-z]+$")
+  GET(url, write_disk(tf <- tempfile(fileext = file_ext)))
+  df <- read_excel(tf, sheet = 39)
+  
+  df %>% 
+    slice_tail(n = -1) %>% 
+    select(
+      tax_id = 1,
+      tax_name = 2,
+      init_2016 = 3,
+      fest_2016 = 4,
+      tot_2016 = 5,
+      init_2017 = 7,
+      fest_2017 = 8,
+      tot_2017 = 9,
+      init_2018 = 11,
+      fest_2018 = 12,
+      tot_2018 = 13,
+      init_2019 = 15,
+      fest_2019 = 16,
+      tot_2019 = 17
+    ) %>% 
+    pivot_longer(-c(tax_id, tax_name), names_to = c("budget_type", "year"), names_sep = "_", values_to = "budget") %>% 
+    replace_na(list(budget = 0)) %>% 
+    mutate(
+      tax_id = as.numeric(tax_id),
+      year = as.numeric(year)
+      ) %>% 
+    filter(year == year_param) %>% 
+    pivot_wider(c(tax_id, year), names_from = "budget_type", names_prefix = "budget_approved_", values_from = "budget")
+}
+
+check <- get_sela_data_culture(2018)
 ```
 
 ## Getting conversion table between tax municipal id and CBS municipal id
@@ -245,9 +291,99 @@ match_budget_muni <- function(data){
   
 }
 
-df <- get_sela_data(2018) %>% 
-  match_budget_muni()
+```
 
+# SELA adiitional data
+
+## 2013 CBS SES data
+
+This function reads the 2013 CBS SES data for municipalities that is being used by 2018 SELA regulations to determine eligibility of municipalities.
+It reads the file, selects the relevant variables, removes excess rows, and transforms the id to the usual format.
+
+```{r}
+read_ses_2013 <- function(url){
+  file_ext <- str_extract(url, "[0-9a-z]+$")
+  GET(url, write_disk(tf <- tempfile(fileext = file_ext)))
+  
+  df <- read_excel(tf, skip = 6)
+  
+  df %>% 
+    slice(2:256) %>%
+    select(
+      muni_status = 1,
+      muni_id = 2,
+      heb_name = 3,
+      ses_2013_i = 5,
+      ses_2013_r = 6,
+      ses_2013_c = 7
+    ) %>% 
+    mutate(
+      muni_id = as.character(muni_id),
+      muni_id = case_when(
+        (muni_status == "0" | muni_status == "99") ~ str_pad(muni_id, width = 4, side = "left", pad = "0"),
+        TRUE ~ str_pad(muni_status, width = 2, side = "left", pad = "0")
+      )
+    ) %>% 
+    select(-c(muni_status, heb_name))
+   
+}
+```
+
+## 2004 CBS periphery data
+
+Important to note that this is and old indicator, therefore since then some municipal jurisdiction changes have happened:
+
+```{r}
+read_peri_2004 <- function(url){
+  file_ext <- str_extract(url, "[0-9a-z]+$")
+  GET(url, write_disk(tf <- tempfile(fileext = file_ext)))
+  
+  df <- read_excel(tf, skip = 7) 
+  
+  df %>% 
+    select(
+      muni_id = 1,
+      heb_name = 2,
+      peri_2004_i = 9,
+      peri_2004_r = 10,
+      peri_2004_c = 11
+    ) %>% 
+    mutate(
+      muni_id = as.character(muni_id),
+      muni_id = case_when(
+        str_length(muni_id) == 5 ~ str_sub(muni_id, start = -2),
+        TRUE ~ str_pad(muni_id, width = 4, side = "left", pad = "0")
+      )
+    ) %>% 
+    select(-heb_name)
+    
+}
+```
+
+## 2008 CBS statistical areas SES data
+
+```{r}
+read_ses_sa_2008 <- function(url){
+  file_ext <- str_extract(url, "[0-9a-z]+$")
+  GET(url, write_disk(tf <- tempfile(fileext = file_ext)))
+  
+  df <- read_excel(tf, skip = 5) 
+  
+  df %>% 
+    slice_head(n = -3) %>% 
+    select(
+      muni_id = 2,
+      sa_id = 4,
+      ses_sa_2008_i = 7,
+      ses_sa_2008_r = 8,
+      ses_sa_2008_c = 9
+    ) %>% 
+    mutate(
+      muni_id = str_pad(as.character(muni_id), width = 4, side = "left", pad = "0")
+    ) %>% 
+    nest(-muni_id) %>% 
+    rename(sa_data = data)
+}
 ```
 
 # Combining all data sources into one data frame
@@ -255,6 +391,9 @@ df <- get_sela_data(2018) %>%
 ```{r}
 muni_2018_url <- "https://www.cbs.gov.il/he/publications/doclib/2019/hamakomiot1999_2017/2018.xlsx" # Initializing the url for 2018 municipalities data
 elec_url <- "https://bechirot22.bechirot.gov.il/election/Documents/%D7%91%D7%97%D7%99%D7%A8%D7%95%D7%AA%20%D7%A7%D7%95%D7%93%D7%9E%D7%95%D7%AA/results_20.xls" # Initializing the url for 2015 elections
+ses_2013_url <- "https://www.cbs.gov.il/he/publications/doclib/2017/socio_eco13_1694/t02.xls" # Initializing the url for 2013 CBS SES data
+peri_2004_url <- "https://www.cbs.gov.il/he/mediarelease/doclib/2008/160/24_08_160t2.xls" # Initializing the url for 2004 CBS periphery data
+ses_sa_2008_url <- "https://www.cbs.gov.il/he/mediarelease/doclib/2013/087/24_13_087t6.xls" # Initializing the url for 2008 CBS atatistical areas data
 
 muni_df <- read_muni_new(muni_2018_url) %>% 
   rename(muni_id = 2)
@@ -263,18 +402,31 @@ elec_df <- read_elec_general(elec_url) %>%  # Reading the general elections raw 
   match_yishuv_muni(2) %>% # Adding the linked yishuvim and municipalities to elections data
   get_elect_pct() # Calculating elections data by municipality
 
-budget_df <- get_sela_data(2018) %>% # Reading and manipulating Sela budget data by year and municipality
+budget_open_df <- get_sela_data_open(2018) %>% # Reading and manipulating Sela open budget data by year and municipality
   match_budget_muni() # Adding the cbs municipality id
+
+budget_culture_df <- get_sela_data_culture(2018) %>% # Reading and manipulating Sela ministry of culture budget data by year and municipality
+  match_budget_muni() # Adding the cbs municipality id
+
+ses_2013_df <- read_ses_2013(ses_2013_url) # Reading 2013 CBS SES data
+
+peri_2004_df <- read_peri_2004(peri_2004_url) # Reading 2004 CBS periphery data
+
+ses_sa_2008_df <- read_ses_sa_2008(ses_sa_2008_url) # Reading 2008 CBS statistical areas data
 
 raw_df <- muni_df %>% 
   left_join(elec_df, by = "muni_id") %>% 
-  left_join(budget_df, by = c("muni_id" = "cbs_id")) %>% 
+  left_join(budget_open_df, by = c("muni_id" = "cbs_id")) %>%
+  left_join(budget_culture_df, by = c("muni_id" = "cbs_id")) %>% 
   mutate( # Change NA's (unbudgeted or no voters municipalities) to 0's
     across(
       last_col(5:0),
       replace_na, 0
     )
-  )
+  ) %>% 
+  left_join(ses_2013_df, by = "muni_id") %>% 
+  left_join(peri_2004_df, by = "muni_id") %>% 
+  left_join(ses_sa_2008_df, by = "muni_id")
 
 ```
 

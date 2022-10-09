@@ -59,9 +59,9 @@ Thesis - Tranform Variables
     class="toc-section-number">4.12</span> Budget</a>
 - <a href="#transform-variables" id="toc-transform-variables"><span
   class="toc-section-number">5</span> Transform variables</a>
-- <a href="#drop-unneccesary-variables-from-the-data-frame"
-  id="toc-drop-unneccesary-variables-from-the-data-frame"><span
-  class="toc-section-number">6</span> Drop unneccesary variables from the
+- <a href="#keep-neccesary-variables-from-the-data-frame"
+  id="toc-keep-neccesary-variables-from-the-data-frame"><span
+  class="toc-section-number">6</span> Keep neccesary variables from the
   data frame</a>
 
 # Load libraries
@@ -108,13 +108,13 @@ df <- raw_df %>%
     bagrut_pct = 154,
     bagrut_uni_pct = 155,
     high_educ_35_55_pct = 156,
-    ses_c = 231,
-    ses_i = 232,
-    ses_r = 233,
-    peri_c = 237,
-    peri_i = 238,
-    peri_r = 239,
-    last_col(5:0)
+    ses_c_2015 = 231,
+    ses_i_2015 = 232,
+    ses_r_2015 = 233,
+    peri_c_2015 = 237,
+    peri_i_2015 = 238,
+    peri_r_2015 = 239,
+    last_col(15:0)
   )
 ```
 
@@ -136,6 +136,8 @@ df <- df %>%
         christ_pct,
         druze_pct,
         immig_1990_pct,
+        starts_with("ses"),
+        starts_with("peri")
       ),
       as.numeric
     )
@@ -172,6 +174,9 @@ df <- df %>%
         christ_pct,
         druze_pct,
         immig_1990_pct,
+        likud_pct,
+        coal_pct,
+        pot_votes
       ),
       replace_na, 0
     )
@@ -580,7 +585,7 @@ df %>%
     Error in UseMethod("pivot_longer"): no applicable method for 'pivot_longer' applied to an object of class "function"
 
 It seems that both voting variables are left skewed. this might be
-because of ineraction with sector variable. Let’s visualise this.
+because of interaction with sector variable. Let’s visualize this.
 
 ``` r
 df %>% 
@@ -670,27 +675,25 @@ df <- df %>%
 
     Error in UseMethod("mutate"): no applicable method for 'mutate' applied to an object of class "function"
 
-# Drop unneccesary variables from the data frame
+# Keep neccesary variables from the data frame
 
 ``` r
-df <- df %>% 
+mdl_df <- df %>% 
   select(
-    -c(
-      district,
-      distance_ta,
-      pop,
-      jew_pct:druze_pct,
-      age_0_4_pct:age_60_64_pct,
-      age_75_plus_pct,
-      dep_ratio,
-      immig_1990_pct,
-      unemp_allowance_pct:wage_num,
-      freelance_num:income_freelance,
-      bagrut_pct:bagrut_uni_pct,
-      ses_c, ses_r,
-      peri_c, peri_r,
-      pot_votes:good_votes,
-      budget_paid
+    c(
+      name,
+      muni_id,
+      type,
+      age_65_plus_pct,
+      age_0_17_pct,
+      min_wage_pct,
+      high_educ_35_55_pct,
+      ses_i_2015,
+      peri_i_2015,
+      likud_pct,
+      coal_pct,
+      budget_approved,
+      sector, pop_log10, immig_1990_pct_log10, income_wage_log10, budget_approved_capita_log10
     )
   ) %>% 
   relocate(budget_approved, .after = last_col())
