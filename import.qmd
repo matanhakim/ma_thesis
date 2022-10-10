@@ -18,6 +18,7 @@ editor_options:
 library(tidyverse)
 library(readxl)
 library(httr)
+library(rvest)
 locale("he")
 ```
 
@@ -385,6 +386,21 @@ read_ses_sa_2008 <- function(url){
     rename(sa_data = data)
 }
 ```
+
+## National priority settlements decided by the Israeli government
+```{r}
+nat_pri_url <- "https://www.gov.il/he/departments/policies/2013_des667"
+nat_pri_df <- read_html(nat_pri_url) %>%
+  html_elements("table") %>% 
+  html_table() %>%
+  pluck(2) %>% 
+  rename(
+    yishuv_id = 1,
+    yishuv_name = 2
+  ) %>% 
+  slice_tail(n = -1)
+```
+
 
 # Combining all data sources into one data frame
 
