@@ -66,4 +66,4 @@ sela_df %>%
 check <- sela_df %>% 
   filter(!is_elig_fest & budget_approved_fest > 0)
 ```
-
+Right now it seems we have two municipalities that are seemingly not eligible but got budgeted: Hof Ashkelon and Beit Shemesh.
