@@ -9,9 +9,14 @@ Thesis - Import Files
     id="toc-import-a-single-municipalities-file-from-cbs-2016-and-later"><span
     class="toc-section-number">2.1</span> Import a single municipalities
     file from CBS (2016 and later)</a>
+  - <a
+    href="#import-a-single-municipalities-file-from-cbs-2015-and-before-with-a-single-variable"
+    id="toc-import-a-single-municipalities-file-from-cbs-2015-and-before-with-a-single-variable"><span
+    class="toc-section-number">2.2</span> Import a single municipalities
+    file from CBS (2015 and before) with a single variable</a>
   - <a href="#getting-the-list-of-yishuvim-id-and-municipality-id"
     id="toc-getting-the-list-of-yishuvim-id-and-municipality-id"><span
-    class="toc-section-number">2.2</span> Getting the list of yishuvim id
+    class="toc-section-number">2.3</span> Getting the list of yishuvim id
     and municipality id</a>
 - <a href="#general-elections-data" id="toc-general-elections-data"><span
   class="toc-section-number">3</span> General elections data</a>
@@ -90,11 +95,25 @@ Thesis - Import Files
 
 ``` r
 library(tidyverse)
+```
+
+    Error: package or namespace load failed for 'tidyverse' in loadNamespace(i, c(lib.loc, .libPaths()), versionCheck = vI[[i]]):
+     namespace 'rlang' 1.0.4 is already loaded, but >= 1.0.6 is required
+
+``` r
 library(readxl)
 library(httr)
 library(rvest)
+```
+
+    Error: package or namespace load failed for 'rvest' in loadNamespace(i, c(lib.loc, .libPaths()), versionCheck = vI[[i]]):
+     namespace 'rlang' 1.0.4 is already loaded, but >= 1.0.6 is required
+
+``` r
 locale("he")
 ```
+
+    Error in locale("he"): could not find function "locale"
 
 # Municipalities data
 
@@ -143,12 +162,46 @@ read_muni_new <- function(url){
 }
 ```
 
+## Import a single municipalities file from CBS (2015 and before) with a single variable
+
+This function is important because some SELA data is using population
+data older than 2018. This function takes the url of the file, the
+wanted column numbers for the cities and for the regional councils. It
+returns a tibble with a municipality id and the wanted variable values.
+
+``` r
+read_muni_old <- function(url, col_num_1, col_num_2){
+  file_ext <- str_extract(url, "[0-9a-z]+$")
+  GET(url, write_disk(tf <- tempfile(fileext = file_ext)))  
+  
+  df1 <- read_excel(tf, sheet = 2, skip = 1)
+  df2 <- read_excel(tf, sheet = 4, skip = 1)
+  
+  df1 <- df1 %>% 
+    select(
+      muni_id = 2,
+      var = col_num_1
+    ) %>% 
+    filter(str_length(muni_id) == 4)
+  
+  df2 <- df2 %>% 
+    select(
+      muni_id = 2,
+      var = col_num_2
+    ) %>% 
+    filter(str_length(muni_id) == 2)
+  
+  df <- bind_rows(df1, df2)
+  df
+}
+```
+
 ## Getting the list of yishuvim id and municipality id
 
 The function gets the 2021 yishuvim file from CBS, cleans it, and
 returns a tibble of id’s of yishuvim by id’s of municipality. the values
 are all text; regional councils have 2-numbers text id’s, and yishuvim
-and other municipalities have 4-nubmers text id’s. If there is no
+and other municipalities have 4-numbers text id’s. If there is no
 municipality id, it means that the yishuv is either unrecognized (for
 example, some Bedouin people in the Negev) or it is some sort of place
 that is not under any municipality (for example, Mikveh Israel farm).
@@ -306,6 +359,8 @@ get_sela_data_open <- function(year_param){
 check2 <- get_sela_data_open(2018)
 ```
 
+    Error in read_csv(url) %>% select(tax_name = 5, tax_id = 6, year = 7, : could not find function "%>%"
+
 ## Importing and manipulating Sela budget data from the Ministry of Culture for 2016-2019
 
 This function reads the XLSX file from the ministry of culture official
@@ -354,6 +409,8 @@ get_sela_data_culture <- function(year_param){
 
 check <- get_sela_data_culture(2018)
 ```
+
+    Error in str_extract(url, "[0-9a-z]+$"): could not find function "str_extract"
 
 ## Getting conversion table between tax municipal id and CBS municipal id
 
@@ -568,28 +625,68 @@ elec_url <- "https://bechirot22.bechirot.gov.il/election/Documents/%D7%91%D7%97%
 ses_2013_url <- "https://www.cbs.gov.il/he/publications/doclib/2017/socio_eco13_1694/t02.xls" # Initializing the url for 2013 CBS SES data
 peri_2004_url <- "https://www.cbs.gov.il/he/mediarelease/doclib/2008/160/24_08_160t2.xls" # Initializing the url for 2004 CBS periphery data
 ses_sa_2008_url <- "https://www.cbs.gov.il/he/mediarelease/doclib/2013/087/24_13_087t6.xls" # Initializing the url for 2008 CBS atatistical areas data
+pop_2015_url <- "https://www.cbs.gov.il/he/publications/doclib/2019/hamakomiot1999_2017/2015.xls" # Initializing the url for 2015 CBS population data
 
 muni_df <- read_muni_new(muni_2018_url) %>% 
   rename(muni_id = 2)
+```
 
+    Error in read_muni_new(muni_2018_url) %>% rename(muni_id = 2): could not find function "%>%"
+
+``` r
 elec_df <- read_elec_general(elec_url) %>%  # Reading the general elections raw data
   match_yishuv_muni(2) %>% # Adding the linked yishuvim and municipalities to elections data
   get_elect_pct() # Calculating elections data by municipality
+```
 
+    Error in read_elec_general(elec_url) %>% match_yishuv_muni(2) %>% get_elect_pct(): could not find function "%>%"
+
+``` r
 budget_open_df <- get_sela_data_open(2018) %>% # Reading and manipulating Sela open budget data by year and municipality
   match_budget_muni() # Adding the cbs municipality id
+```
 
+    Error in get_sela_data_open(2018) %>% match_budget_muni(): could not find function "%>%"
+
+``` r
 budget_culture_df <- get_sela_data_culture(2018) %>% # Reading and manipulating Sela ministry of culture budget data by year and municipality
   match_budget_muni() # Adding the cbs municipality id
+```
 
+    Error in get_sela_data_culture(2018) %>% match_budget_muni(): could not find function "%>%"
+
+``` r
 ses_2013_df <- read_ses_2013(ses_2013_url) # Reading 2013 CBS SES data
+```
 
+    Error in str_extract(url, "[0-9a-z]+$"): could not find function "str_extract"
+
+``` r
 peri_2004_df <- read_peri_2004(peri_2004_url) # Reading 2004 CBS periphery data
+```
 
+    Error in str_extract(url, "[0-9a-z]+$"): could not find function "str_extract"
+
+``` r
 ses_sa_2008_df <- read_ses_sa_2008(ses_sa_2008_url) # Reading 2008 CBS statistical areas data
+```
 
+    Error in str_extract(url, "[0-9a-z]+$"): could not find function "str_extract"
+
+``` r
 nat_pri_df <- get_nat_pri_munis() # Reading 2013 national priority areas government decision for municipalities
+```
 
+    Error in read_html(nat_pri_url) %>% html_elements("table") %>% html_table(): could not find function "%>%"
+
+``` r
+pop_2015_df <- read_muni_old(pop_2015_url, 14, 31) %>% 
+  rename(pop_2015 = var)# Reading the 2015 CBS population data
+```
+
+    Error in read_muni_old(pop_2015_url, 14, 31) %>% rename(pop_2015 = var): could not find function "%>%"
+
+``` r
 raw_df <- muni_df %>% 
   left_join(elec_df, by = "muni_id") %>% 
   left_join(budget_open_df, by = c("muni_id" = "cbs_id")) %>%
@@ -603,8 +700,11 @@ raw_df <- muni_df %>%
   left_join(ses_2013_df, by = "muni_id") %>% 
   left_join(peri_2004_df, by = "muni_id") %>% 
   left_join(ses_sa_2008_df, by = "muni_id") %>% 
-  left_join(nat_pri_df, by = "muni_id")
+  left_join(nat_pri_df, by = "muni_id") %>% 
+  left_join(pop_2015_df, by = "muni_id")
 ```
+
+    Error in muni_df %>% left_join(elec_df, by = "muni_id") %>% left_join(budget_open_df, : could not find function "%>%"
 
 # Future Code that is not operatable right now
 
