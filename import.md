@@ -9,6 +9,10 @@ Thesis - Import Files
     id="toc-import-a-single-municipalities-file-from-cbs-2016-and-later"><span
     class="toc-section-number">2.1</span> Import a single municipalities
     file from CBS (2016 and later)</a>
+  - <a href="#getting-the-list-of-yishuvim-id-and-municipality-id"
+    id="toc-getting-the-list-of-yishuvim-id-and-municipality-id"><span
+    class="toc-section-number">2.2</span> Getting the list of yishuvim id
+    and municipality id</a>
 - <a href="#general-elections-data" id="toc-general-elections-data"><span
   class="toc-section-number">3</span> General elections data</a>
   - <a
@@ -16,17 +20,13 @@ Thesis - Import Files
     id="toc-importing-general-elections-files-from-the-elections-committee-by-url"><span
     class="toc-section-number">3.1</span> Importing general elections files
     from the elections committee by url</a>
-  - <a href="#getting-the-list-of-yishuvim-id-and-municipality-id"
-    id="toc-getting-the-list-of-yishuvim-id-and-municipality-id"><span
-    class="toc-section-number">3.2</span> Getting the list of yishuvim id
-    and municipality id</a>
   - <a href="#adding-municipality-id-to-a-data-frame-with-yishuv_id"
     id="toc-adding-municipality-id-to-a-data-frame-with-yishuv_id"><span
-    class="toc-section-number">3.3</span> Adding municipality id to a data
+    class="toc-section-number">3.2</span> Adding municipality id to a data
     frame with yishuv_id</a>
   - <a href="#manipulating-elections-data-to-fit-municipalities-data"
     id="toc-manipulating-elections-data-to-fit-municipalities-data"><span
-    class="toc-section-number">3.4</span> Manipulating elections data to fit
+    class="toc-section-number">3.3</span> Manipulating elections data to fit
     municipalities data</a>
 - <a href="#budget-data" id="toc-budget-data"><span
   class="toc-section-number">4</span> Budget data</a>
@@ -59,6 +59,16 @@ Thesis - Import Files
     id="toc-cbs-statistical-areas-ses-data"><span
     class="toc-section-number">5.3</span> 2008 CBS statistical areas SES
     data</a>
+  - <a
+    href="#national-priority-settlements-decided-by-the-israeli-government"
+    id="toc-national-priority-settlements-decided-by-the-israeli-government"><span
+    class="toc-section-number">5.4</span> National priority settlements
+    decided by the Israeli government</a>
+    - <a
+      href="#merging-national-priority-yishuvim-subdistricts-nafot-and-yishuvim-close-to-the-border"
+      id="toc-merging-national-priority-yishuvim-subdistricts-nafot-and-yishuvim-close-to-the-border"><span
+      class="toc-section-number">5.4.1</span> Merging national priority
+      yishuvim, subdistricts (Nafot) and yishuvim close to the border</a>
 - <a href="#combining-all-data-sources-into-one-data-frame"
   id="toc-combining-all-data-sources-into-one-data-frame"><span
   class="toc-section-number">6</span> Combining all data sources into one
@@ -82,6 +92,7 @@ Thesis - Import Files
 library(tidyverse)
 library(readxl)
 library(httr)
+library(rvest)
 locale("he")
 ```
 
@@ -132,24 +143,6 @@ read_muni_new <- function(url){
 }
 ```
 
-# General elections data
-
-## Importing general elections files from the elections committee by url
-
-important to note this function is currently only applicable to excel
-files
-
-``` r
-read_elec_general <- function(url){
-  file_ext <- str_extract(url, "[0-9a-z]+$")
-  GET(url, write_disk(tf <- tempfile(fileext = file_ext)))
-  
-  df <- read_excel(tf)
-  
-  df
-}
-```
-
 ## Getting the list of yishuvim id and municipality id
 
 The function gets the 2021 yishuvim file from CBS, cleans it, and
@@ -172,6 +165,7 @@ get_yishuv_muni <- function(){
   yishuvim <- yishuvim %>% 
     select(
       yishuv_id = 2,
+      nafa_id = 6,
       muni_id = 9
     ) %>% 
     mutate(
@@ -183,6 +177,24 @@ get_yishuv_muni <- function(){
     )
   
 yishuvim
+}
+```
+
+# General elections data
+
+## Importing general elections files from the elections committee by url
+
+important to note this function is currently only applicable to excel
+files
+
+``` r
+read_elec_general <- function(url){
+  file_ext <- str_extract(url, "[0-9a-z]+$")
+  GET(url, write_disk(tf <- tempfile(fileext = file_ext)))
+  
+  df <- read_excel(tf)
+  
+  df
 }
 ```
 
@@ -199,7 +211,8 @@ and the added municipality id.
 ``` r
 match_yishuv_muni <- function(data, id_col_num){
 
-  df_keys <- get_yishuv_muni()
+  df_keys <- get_yishuv_muni() %>% 
+    select(-nafa_id)
   
   data %>% 
     mutate(
@@ -470,6 +483,83 @@ read_ses_sa_2008 <- function(url){
 }
 ```
 
+## National priority settlements decided by the Israeli government
+
+Since the SELA budget relies also on national priority areas, these data
+are needed to be imported. \### Getting the list of tables from the
+national priority webpage This function reads the table data in the
+national priority areas government decision webpage, and returns a list
+of those tables.
+
+``` r
+get_nat_pri_list <- function(){
+  nat_pri_url <- "https://www.gov.il/he/departments/policies/2013_des667"
+  
+  read_html(nat_pri_url) %>%
+    html_elements("table") %>% 
+    html_table()
+}
+```
+
+### Merging national priority yishuvim, subdistricts (Nafot) and yishuvim close to the border
+
+This function reads the tables from the previous section and manipulates
+them: - The nafot (subdistricts) data is added with the corresponding
+nafa_id column, and converts Hebrew data to logical. - The yishuvim
+declared as national pririty are cleaned, added with a TRUE column and
+formats the yishuv_id. - The yishuvim declared as close to the border or
+threatened are cleaned, added with a TRUE column and formats the
+yishuv_id. - The whole yishuvim list is being caled from the CBS
+website, and then all other three data frames are joined. NA’s are
+replaced with FALSE, and a final national priority variable for each
+yishuv is calculated. - Finally, yishuvim with NA as municipality are
+filtered out, and a final national priority variable for each
+municipality is calculated as having either more than 75% of yishuvim in
+the municipality as national priority, or more than 50% of yishuvim in
+the municipality as close to the border or threatened.
+
+``` r
+get_nat_pri_munis <- function(){
+  
+  pri_list <- get_nat_pri_list()
+  
+  pri_nafot <- pri_list[[1]] %>% 
+    add_column(nafa_id = c(29,21,24,62,22,23,71,32,11,61,31,41,44,43,42,51)) %>% 
+    mutate(
+      nafa_id = as.character(nafa_id),
+      nafa_nat_pri = (X7 == "כן")
+      ) %>% 
+    select(nafa_id, nafa_nat_pri)
+  
+  pri_yishuvim <- pri_list[[2]] %>% 
+    select(yishuv_id = 1) %>% 
+    slice_tail(n = -1) %>% 
+    add_column(yishuv_nat_pri = TRUE) %>% 
+    mutate(yishuv_id = str_pad(yishuv_id, width = 4, side = "left", pad = "0"))
+  
+  pri_border <- pri_list[[3]] %>% 
+    select(yishuv_id = 1) %>% 
+    slice_tail(n = -1) %>% 
+    add_column(border_nat_pri = TRUE) %>% 
+    mutate(yishuv_id = str_pad(yishuv_id, width = 4, side = "left", pad = "0"))
+  
+  pri_df <- get_yishuv_muni() %>% 
+    left_join(pri_nafot, by = "nafa_id") %>% 
+    left_join(pri_yishuvim, by = "yishuv_id") %>% 
+    left_join(pri_border, by = "yishuv_id") %>% 
+    mutate(
+      across(ends_with("pri"), ~ replace_na(., FALSE)),
+      is_nat_pri = nafa_nat_pri | yishuv_nat_pri | border_nat_pri
+    )
+    
+  pri_df %>% 
+  filter(!is.na(muni_id)) %>% 
+  group_by(muni_id) %>% 
+  summarise(is_nat_pri = (mean(is_nat_pri) > 0.75) | (mean(border_nat_pri) >= 0.5))
+    
+}
+```
+
 # Combining all data sources into one data frame
 
 ``` r
@@ -498,6 +588,8 @@ peri_2004_df <- read_peri_2004(peri_2004_url) # Reading 2004 CBS periphery data
 
 ses_sa_2008_df <- read_ses_sa_2008(ses_sa_2008_url) # Reading 2008 CBS statistical areas data
 
+nat_pri_df <- get_nat_pri_munis() # Reading 2013 national priority areas government decision for municipalities
+
 raw_df <- muni_df %>% 
   left_join(elec_df, by = "muni_id") %>% 
   left_join(budget_open_df, by = c("muni_id" = "cbs_id")) %>%
@@ -510,7 +602,8 @@ raw_df <- muni_df %>%
   ) %>% 
   left_join(ses_2013_df, by = "muni_id") %>% 
   left_join(peri_2004_df, by = "muni_id") %>% 
-  left_join(ses_sa_2008_df, by = "muni_id")
+  left_join(ses_sa_2008_df, by = "muni_id") %>% 
+  left_join(nat_pri_df, by = "muni_id")
 ```
 
 # Future Code that is not operatable right now

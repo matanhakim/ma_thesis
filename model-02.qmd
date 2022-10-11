@@ -38,15 +38,12 @@ sela_df <- df %>%
     peri_2004_c,
     sa_data,
     sector,
+    is_nat_pri,
     starts_with("budget")
   )
 ```
 
 # Checking eligibility for both SELA budget types
-
-## Check eligibilty for SELA festivals budget type
-
-## Check eligibilty for SELA initiatives budget type
 
 ## Add variables for eligibilty
 ```{r}
@@ -57,6 +54,7 @@ sela_df <- sela_df %>%
       ses_2013_c > 7 ~ FALSE,
       ses_2013_c < 7 ~ TRUE,
       type == "מועצה אזורית" & peri_2004_c <= 2 ~ TRUE,
+      is_nat_pri ~ TRUE,
       TRUE ~ FALSE
     )
   )

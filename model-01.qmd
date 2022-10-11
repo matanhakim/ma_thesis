@@ -3,13 +3,11 @@ title: "Thesis - Model"
 toc: true
 number-sections: true
 code-fold: true
-warning: false
-output: false
-error: true
+execute: 
+  eval: true
+  output: true
+  error: true
 format: gfm
-editor_options: 
-  markdown: 
-    wrap: sentence
 ---
 
 # Load libraries
@@ -21,6 +19,30 @@ library(modelr)
 library(corrr)
 library(ggfortify)
 ```
+
+# Select Variables to work with
+```{r}
+mdl_df <- df %>% 
+  select(
+    c(
+      name,
+      muni_id,
+      type,
+      age_65_plus_pct,
+      age_0_17_pct,
+      min_wage_pct,
+      high_educ_35_55_pct,
+      ses_i_2015,
+      peri_i_2015,
+      likud_pct,
+      coal_pct,
+      budget_approved,
+      sector, pop_log10, immig_1990_pct_log10, income_wage_log10, budget_approved_capita_log10
+    )
+  ) %>% 
+  relocate(budget_approved, .after = last_col())
+```
+
 
 # First varaible to start with
 
@@ -123,7 +145,7 @@ df_mdl2 <- mdl_df %>%
 df_mdl2
 ```
 Seems like the municipality type is the best second variable.
-Let's check for significance, visualise and examine the model.
+Let's check for significance, visualize and examine the model.
 ```{r}
 mdl2 <- lm(budget_approved ~ ses_i_2015 + type, data = mdl_df)
 

@@ -62,7 +62,7 @@ df <- raw_df %>%
     peri_c_2015 = 237,
     peri_i_2015 = 238,
     peri_r_2015 = 239,
-    last_col(15:0)
+    last_col(16:0)
   )
 ```
 
@@ -488,26 +488,3 @@ df <- df %>%
   )
 ```
 
-# Keep neccesary variables from the data frame
-
-```{r}
-mdl_df <- df %>% 
-  select(
-    c(
-      name,
-      muni_id,
-      type,
-      age_65_plus_pct,
-      age_0_17_pct,
-      min_wage_pct,
-      high_educ_35_55_pct,
-      ses_i_2015,
-      peri_i_2015,
-      likud_pct,
-      coal_pct,
-      budget_approved,
-      sector, pop_log10, immig_1990_pct_log10, income_wage_log10, budget_approved_capita_log10
-    )
-  ) %>% 
-  relocate(budget_approved, .after = last_col())
-```

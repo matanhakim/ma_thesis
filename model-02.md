@@ -10,17 +10,9 @@ Thesis - Model
   id="toc-checking-eligibility-for-both-sela-budget-types"><span
   class="toc-section-number">3</span> Checking eligibility for both SELA
   budget types</a>
-  - <a href="#check-eligibilty-for-sela-festivals-budget-type"
-    id="toc-check-eligibilty-for-sela-festivals-budget-type"><span
-    class="toc-section-number">3.1</span> Check eligibilty for SELA
-    festivals budget type</a>
-  - <a href="#check-eligibilty-for-sela-initiatives-budget-type"
-    id="toc-check-eligibilty-for-sela-initiatives-budget-type"><span
-    class="toc-section-number">3.2</span> Check eligibilty for SELA
-    initiatives budget type</a>
   - <a href="#add-variables-for-eligibilty"
     id="toc-add-variables-for-eligibilty"><span
-    class="toc-section-number">3.3</span> Add variables for eligibilty</a>
+    class="toc-section-number">3.1</span> Add variables for eligibilty</a>
 
 After failing to come up with meaningful results in model-01 attempt
 with a linear regression model predicting approved budget, we will now
@@ -53,6 +45,7 @@ sela_df <- df %>%
     peri_2004_c,
     sa_data,
     sector,
+    is_nat_pri,
     starts_with("budget")
   )
 ```
@@ -60,10 +53,6 @@ sela_df <- df %>%
     Error in UseMethod("select"): no applicable method for 'select' applied to an object of class "function"
 
 # Checking eligibility for both SELA budget types
-
-## Check eligibilty for SELA festivals budget type
-
-## Check eligibilty for SELA initiatives budget type
 
 ## Add variables for eligibilty
 
@@ -75,6 +64,7 @@ sela_df <- sela_df %>%
       ses_2013_c > 7 ~ FALSE,
       ses_2013_c < 7 ~ TRUE,
       type == "מועצה אזורית" & peri_2004_c <= 2 ~ TRUE,
+      is_nat_pri ~ TRUE,
       TRUE ~ FALSE
     )
   )

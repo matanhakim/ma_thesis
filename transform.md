@@ -59,10 +59,6 @@ Thesis - Tranform Variables
     class="toc-section-number">4.12</span> Budget</a>
 - <a href="#transform-variables" id="toc-transform-variables"><span
   class="toc-section-number">5</span> Transform variables</a>
-- <a href="#keep-neccesary-variables-from-the-data-frame"
-  id="toc-keep-neccesary-variables-from-the-data-frame"><span
-  class="toc-section-number">6</span> Keep neccesary variables from the
-  data frame</a>
 
 # Load libraries
 
@@ -114,7 +110,7 @@ df <- raw_df %>%
     peri_c_2015 = 237,
     peri_i_2015 = 238,
     peri_r_2015 = 239,
-    last_col(15:0)
+    last_col(16:0)
   )
 ```
 
@@ -674,29 +670,3 @@ df <- df %>%
 ```
 
     Error in UseMethod("mutate"): no applicable method for 'mutate' applied to an object of class "function"
-
-# Keep neccesary variables from the data frame
-
-``` r
-mdl_df <- df %>% 
-  select(
-    c(
-      name,
-      muni_id,
-      type,
-      age_65_plus_pct,
-      age_0_17_pct,
-      min_wage_pct,
-      high_educ_35_55_pct,
-      ses_i_2015,
-      peri_i_2015,
-      likud_pct,
-      coal_pct,
-      budget_approved,
-      sector, pop_log10, immig_1990_pct_log10, income_wage_log10, budget_approved_capita_log10
-    )
-  ) %>% 
-  relocate(budget_approved, .after = last_col())
-```
-
-    Error in UseMethod("select"): no applicable method for 'select' applied to an object of class "function"
