@@ -62,7 +62,7 @@ df <- raw_df %>%
     peri_c_2015 = 237,
     peri_i_2015 = 238,
     peri_r_2015 = 239,
-    last_col(16:0)
+    last_col(17:0)
   )
 ```
 
@@ -484,7 +484,8 @@ df <- df %>%
     sector = as_factor(case_when(
       arab_pct > 50 ~ "arab",
       TRUE ~ "jewish"
-    ))
+    )),
+    pop_2015 = pop_2015 * 1000
   )
 ```
 

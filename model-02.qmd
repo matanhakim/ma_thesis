@@ -32,6 +32,7 @@ sela_df <- df %>%
     district,
     type,
     pop,
+    pop_2015,
     likud_pct,
     coal_pct,
     ses_2013_c,
@@ -46,24 +47,35 @@ sela_df <- df %>%
 # Checking eligibility for both SELA budget types
 
 ## Add variables for eligibilty
+The population year determined to use to decide eligibility is 2015. using 2018 created some municipalities that changed population category between the years. the 2015 year was the latest available during the start of 2018.
 ```{r}
 sela_df <- sela_df %>% 
   mutate(
     is_elig_fest = case_when(
-      pop > 100000 ~ FALSE,
+      pop_2015 > 100000 ~ FALSE,
       ses_2013_c > 7 ~ FALSE,
       ses_2013_c < 7 ~ TRUE,
       type == "מועצה אזורית" & peri_2004_c <= 2 ~ TRUE,
       is_nat_pri ~ TRUE,
       TRUE ~ FALSE
+    ),
+    sum_elig_fest = case_when(
+      !is_elig_fest ~ 0,
+      pop_2015 <= 5000 ~ 70000,
+      pop_2015 <= 20000 ~ 115000,
+      pop_2015 > 20000 ~ 200000
     )
   )
 
 sela_df %>% 
-  group_by(is_elig_fest) %>% 
-  summarise(sum = sum(budget_approved_fest))
+  ggplot(aes(budget_approved_fest/sum_elig_fest)) +
+  geom_histogram()
 
-check <- sela_df %>% 
+sela_df %>% 
   filter(!is_elig_fest & budget_approved_fest > 0)
+
+sela_df %>% 
+  filter(is_elig_fest & budget_approved_fest < sum_elig_fest)
+
 ```
 Right now it seems we have two municipalities that are seemingly not eligible but got budgeted: Hof Ashkelon and Beit Shemesh.
