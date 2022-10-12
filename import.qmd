@@ -2,11 +2,11 @@
 title: "Thesis - Import Files"
 toc: true
 number-sections: true
-code-fold: true
+format: gfm
+  code-fold: true
 warning: false
 output: false
 error: true
-format: gfm
 editor_options: 
   markdown: 
     wrap: sentence
@@ -528,7 +528,7 @@ raw_df <- muni_df %>%
   left_join(budget_culture_df, by = c("muni_id" = "cbs_id")) %>% 
   mutate( # Change NA's (unbudgeted or no voters municipalities) to 0's
     across(
-      last_col(5:0),
+      last_col(5):last_col(0),
       replace_na, 0
     )
   ) %>% 

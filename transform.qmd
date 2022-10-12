@@ -62,7 +62,7 @@ df <- raw_df %>%
     peri_c_2015 = 237,
     peri_i_2015 = 238,
     peri_r_2015 = 239,
-    last_col(17:0)
+    last_col(17):last_col(0)
   )
 ```
 
