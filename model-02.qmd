@@ -17,6 +17,7 @@ After failing to come up with meaningful results in model-01 attempt with a line
 
 ```{r}
 library(tidyverse)
+library(timeDate)
 library(tidymodels)
 library(modelr)
 library(corrr)
@@ -150,5 +151,197 @@ sela_df <- sela_df %>%
     )
   )
 
+sela_df %>% 
+  ggplot(aes(budget_approved_init - budget_elig_init)) +
+  geom_histogram()
+
+sela_df %>% 
+  count(budget_approved_init - budget_elig_init)
+
+sela_df %>% 
+  filter(budget_approved_init > budget_elig_init) %>% 
+  arrange(desc(budget_approved_init - budget_elig_init))
+```
+# Initiatives Execution
+Calculating the execution percent of cultural initiatives budget and examining its distribution.
+```{r}
+sela_df <- sela_df %>% 
+  mutate(
+    exec_pct_init = budget_approved_init / budget_elig_init
+  )
+
+sela_df %>% 
+  ggplot(aes(exec_pct_init)) +
+  geom_histogram()
+```
+Visualizing the relationships between relevant variables and the execution percent. Box plots for categorical variables and scatter plots for continuous variables.
+```{r}
+sela_df %>% 
+  filter(budget_elig_init - budget_approved_init > 1000) %>% 
+  select(
+    name,
+    district,
+    type,
+    ses_2013_c,
+    peri_2004_c,
+    sector,
+    exec_pct_init
+  ) %>% 
+  mutate(across(-exec_pct_init, ~ as_factor(.))) %>% 
+  pivot_longer(!c(name, exec_pct_init), names_to = "var", values_to = "value") %>% 
+  ggplot(aes(value, exec_pct_init)) + 
+  geom_boxplot() + 
+  facet_wrap(~ var, scales = "free_y") +
+  coord_flip()
+
+sela_df %>% 
+  filter(budget_elig_init - budget_approved_init > 1000) %>% 
+  select(
+    name,
+    pop_2015,
+    likud_pct,
+    coal_pct,
+    exec_pct_init
+  ) %>% 
+  mutate(pop_2015_log10 = log10(pop_2015)) %>% 
+  pivot_longer(!c(name, exec_pct_init), names_to = "var", values_to = "value") %>% 
+  ggplot(aes(value, exec_pct_init)) + 
+  geom_point() +
+  facet_wrap(~ var, scales = "free_x") +
+  geom_smooth(se = FALSE)
+
+sela_df %>% 
+  filter(budget_elig_init - budget_approved_init > 1000) %>% 
+  summarise(cor(log10(pop_2015), exec_pct_init))
+```
+# Eligibilty linear modelling
+## Per capita modelling
+### Transform dependant variable
+```{r}
+sela_df <- sela_df %>% 
+  mutate(
+    budget_elig_tot = budget_elig_fest + budget_elig_init,
+    budget_elig_tot_capita = budget_elig_tot / pop_2015
+  )
+
+sela_df %>% 
+  ggplot(aes(budget_elig_tot_capita)) +
+  geom_histogram(aes(y = ..density..)) +
+  geom_density()
+
+sela_df %>% 
+  ggplot(aes(log10(budget_elig_tot_capita))) +
+  geom_histogram(aes(y = ..density..)) +
+  geom_density()
+
+sela_df %>% 
+  ggplot(aes(sqrt(budget_elig_tot_capita))) +
+  geom_histogram(aes(y = ..density..)) +
+  geom_density()
+
+sela_df %>% 
+  ggplot(aes((budget_elig_tot_capita)^0.3)) +
+  geom_histogram(aes(y = ..density..)) +
+  geom_density()
+
+sela_df %>% 
+  transmute(
+    budget_elig_tot_capita_log10 = log10(budget_elig_tot_capita),
+    budget_elig_tot_capita_pw.1 = budget_elig_tot_capita ^ 0.1,
+    budget_elig_tot_capita_pw.2 = budget_elig_tot_capita ^ 0.2,
+    budget_elig_tot_capita_pw.3 = budget_elig_tot_capita ^ 0.3,
+    budget_elig_tot_capita_pw.4 = budget_elig_tot_capita ^ 0.4,
+    budget_elig_tot_capita_pw.5 = budget_elig_tot_capita ^ 0.5
+  ) %>% 
+  pivot_longer(everything(), names_to = "fn", names_prefix = "budget_elig_tot_capita_", values_to = "value") %>% 
+  group_by(fn) %>% 
+  summarise(
+    skewness = skewness(value),
+    kurtosis = kurtosis(value)
+  )
+```
+It seems that the transformation of per capita to the power of 0.3 creates the most normally distributed variable with the least skewness and kurtosis.
+
+### Linear model per capita transformed
+```{r}
+sela_df <- sela_df %>% 
+  mutate(budget_elig_tot_capita_pw.3 = budget_elig_tot_capita ^ 0.3)
+
+sela_mdl1 <- lm(budget_elig_tot_capita_pw.3 ~ sector * likud_pct, data = sela_df)
+
+sela_mdl1 %>% 
+  tidy()
+
+sela_mdl1 %>% 
+  glance()
+
+sela_mdl1 %>% 
+  augment() %>% 
+  ggplot(aes(likud_pct, color = sector)) + 
+  geom_line(aes(y = .fitted)) +
+  geom_point(aes(y = budget_elig_tot_capita_pw.3))
+```
+### Linear model per capita untransformed
+```{r}
+sela_mdl1a <- lm(budget_elig_tot_capita ~ sector * likud_pct, data = sela_df)
+
+sela_mdl1a %>% 
+  tidy()
+
+sela_mdl1a %>% 
+  glance()
+
+sela_mdl1a %>% 
+  augment() %>% 
+  ggplot(aes(likud_pct, budget_elig_tot_capita, color = sector)) + 
+  geom_line(aes(y = .fitted)) +
+  geom_point()
+```
+
+## total budget modelling
+### Check distribution of dependant variable
+```{r}
+sela_df %>% 
+  ggplot(aes(budget_elig_tot)) +
+  geom_histogram(aes(y = ..density..)) +
+  geom_density()
+
+sela_df %>% 
+  summarise(
+    skewness = skewness(budget_elig_tot),
+    kurtosis = kurtosis(budget_elig_tot)
+  )
+```
+### Model with Likud voting percent
+```{r}
+sela_mdl2 <- lm(budget_elig_tot ~ sector * likud_pct, data = sela_df)
+
+sela_mdl2 %>% 
+  tidy()
+
+sela_mdl2 %>% 
+  glance()
+
+sela_mdl2 %>% 
+  augment() %>% 
+  ggplot(aes(likud_pct, budget_elig_tot, color = sector)) + 
+  geom_line(aes(y = .fitted)) +
+  geom_point()
+```
+### Model with coalition voting percent
+```{r}
+sela_mdl2 <- lm(budget_elig_tot ~ sector * coal_pct, data = sela_df)
+
+sela_mdl2 %>% 
+  tidy()
+
+sela_mdl2 %>% 
+  glance()
+
+sela_mdl2 %>% 
+  augment() %>% 
+  ggplot(aes(coal_pct, budget_elig_tot, color = sector)) + 
+  geom_line(aes(y = .fitted)) +
+  geom_point()
 ```
 

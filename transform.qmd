@@ -425,8 +425,7 @@ df %>%
 It seems that indeed the voting variables are almost always very low in the Arab sector.
 Also, this suggests that the "mixed" value of the sector variable should be omitted if we check interaction in the model to prevent overfitting.
 This is because There are only 13 mixed municipalities.
-Again.
-it is possible to create a "special sector" variable alongside Druze and Haredi.
+Again, it is possible to create a "special sector" variable alongside Druze and Haredi.
 
 ## Budget
 
