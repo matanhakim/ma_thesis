@@ -226,8 +226,7 @@ It returns the summarized data frame.
 Important to note the current url method is pretty brutal and further programming is needed here, maybe working with their API.
 
 ```{r}
-get_sela_data_open <- function(year_param){
-  url <- "https://next.obudget.org/api/download?query=SELECT%20year_requested%20AS%20%22%D7%A9%D7%A0%D7%94%22%2C%20supporting_ministry%20AS%20%22%D7%9E%D7%A9%D7%A8%D7%93%22%2C%20request_type%20AS%20%22%D7%A1%D7%95%D7%92%20%D7%AA%D7%9E%D7%99%D7%9B%D7%94%22%2C%20support_title%20AS%20%22%D7%A0%D7%95%D7%A9%D7%90%22%2C%20budget_code%2C%20budget_code%20AS%20%22%D7%9E%D7%A1%D7%A4%D7%A8%20%D7%AA%D7%A7%D7%A0%D7%94%22%2C%20%27supports%2F%27%20%7C%7C%20budget_code%20%7C%7C%20%27%2F%27%20%7C%7C%20year_requested%20%7C%7C%20%27%2F%27%20%7C%7C%20entity_id%20%7C%7C%20%27%2F%27%20%7C%7C%20request_type%20AS%20item_id%2C%20coalesce(entity_name%2C%20recipient)%20as%20%22%D7%9E%D7%A7%D7%91%D7%9C%20%D7%94%D7%AA%D7%9E%D7%99%D7%9B%D7%94%22%2C%20entity_id%20as%20%22%D7%9E%D7%A1%D7%A4%D7%A8%20%D7%AA%D7%90%D7%92%D7%99%D7%93%22%2C%20%27org%2F%27%20%7C%7C%20entity_kind%20%7C%7C%20%27%2F%27%20%7C%7C%20entity_id%20as%20entity_item_id%2C%20sum(amount_approved)%20as%20%22%D7%A1%D7%94%D7%B4%D7%9B%20%D7%90%D7%95%D7%A9%D7%A8%22%2C%20sum(amount_paid)%20as%20%22%D7%A1%D7%94%D7%B4%D7%9B%20%D7%A9%D7%95%D7%9C%D7%9D%22%20FROM%20raw_supports%20WHERE%20year_requested%20%3E0%20AND%20budget_code%20%3D%20%270019420256%27%20GROUP%20BY%201%2C%202%2C%203%2C%204%2C%205%2C%206%2C%207%2C%208%2C%209%2C%2010%20order%20by%20year_requested%20desc&format=csv&filename=%D7%A1%D7%9C%20%D7%9C%D7%AA%D7%A8%D7%91%D7%95%D7%AA%20%D7%A2%D7%99%D7%A8%D7%95%D7%A0%D7%99%D7%AA__%20%D7%A4%D7%99%D7%A8%D7%95%D7%98%20%D7%9B%D7%9C%20%D7%94%D7%AA%D7%9E%D7%99%D7%9B%D7%95%D7%AA%20%D7%9E%D7%AA%D7%A7%D7%A6%D7%99%D7%91%20%D7%96%D7%94%20%D7%A9%D7%90%D7%95%D7%A9%D7%A8%D7%95%20%D7%91%20%D7%9B%D7%9C%20%D7%94%D7%A9%D7%A0%D7%99%D7%9D&headers=%D7%A0%D7%95%D7%A9%D7%90%3Aitem_link(item_id)%3B%D7%9E%D7%A1%D7%A4%D7%A8%20%D7%AA%D7%A7%D7%A0%D7%94%3Abudget_code%3Asearch_term(budget_code)%3B%D7%9E%D7%A9%D7%A8%D7%93%3B%D7%A1%D7%95%D7%92%20%D7%AA%D7%9E%D7%99%D7%9B%D7%94%3B%D7%9E%D7%A7%D7%91%D7%9C%20%D7%94%D7%AA%D7%9E%D7%99%D7%9B%D7%94%3Aitem_link(entity_item_id)%3B%D7%9E%D7%A1%D7%A4%D7%A8%20%D7%AA%D7%90%D7%92%D7%99%D7%93%3B%D7%A9%D7%A0%D7%94%3B%D7%A1%D7%94%D7%B4%D7%9B%20%D7%90%D7%95%D7%A9%D7%A8%3Anumber%3B%D7%A1%D7%94%D7%B4%D7%9B%20%D7%A9%D7%95%D7%9C%D7%9D%3Anumber"
+get_budget_data_open <- function(url, year_param){
   
   read_csv(url) %>% 
     select(
@@ -249,7 +248,7 @@ get_sela_data_open <- function(year_param){
     filter(year == year_param)
 
 }
-check2 <- get_sela_data_open(2018)
+
 ```
 
 ## Importing and manipulating Sela budget data from the Ministry of Culture for 2016-2019
@@ -294,7 +293,6 @@ get_sela_data_culture <- function(year_param){
     pivot_wider(c(tax_id, year), names_from = "budget_type", names_prefix = "budget_approved_", values_from = "budget")
 }
 
-check <- get_sela_data_culture(2018)
 ```
 
 ## Getting conversion table between tax municipal id and CBS municipal id
@@ -487,6 +485,59 @@ get_nat_pri_munis <- function(){
 }
 ```
 
+# Amutot data
+
+## Getting all of the registered amutot and their organization's id
+This function reads every registered amuta from guidestar and returns its organiztion (tax) id and the name of its registered yishuv
+```{r}
+get_org_data <- function(){
+  url <- "https://www.guidestar.org.il/sfc/servlet.shepherd/document/download/0690800000GqK2KAAV"
+  GET(url, write_disk(tf <- tempfile(, fileext = "xlsx")))
+  
+  df <- read_excel(tf, sheet = 2) %>% 
+    select(
+      org_id = 2,
+      yishuv_name = 14
+    )
+  
+  df
+}
+```
+
+## Match every name of an organization's yishuv with a yishuv id
+This function gets a data frame with a column for a yishuv name and matches it with a yishuv id using a preexisting list of yishuvim names and id's
+```{r}
+match_yishuv_name <- function(data){
+  yishuvim_names <- read_csv("https://raw.githubusercontent.com/matanhakim/general_files/main/yishuv_names.csv")
+  
+  data %>% 
+    left_join(yishuvim_names, by = "yishuv_name")
+}
+orgs <- get_org_data()
+check <- orgs %>% match_yishuv_name()
+check <- check %>% filter(is.na(yishuv_id)) %>% distinct(yishuv_name, .keep_all = TRUE) %>% arrange(yishuv_name)
+```
+## Match every Amuta in budget data with its municipality id
+This function takes a data frame, usually of some budget, and adds the municipality id for every tax id in the budget. Right now the function is succesful for municipalities and amutot, but it also needs data for business companies. after this is achieved, another function needs to be built to summarize the budget data per municipality.
+
+```{r}
+match_budget_org <- function(data){
+  munis <- get_muni_id_conv() %>% 
+    rename(
+      org_id = tax_id,
+      muni_id = cbs_id
+    )
+
+  get_org_data() %>% 
+    match_yishuv_name() %>% 
+    match_yishuv_muni(id_col_num = 3) %>% 
+    bind_rows(munis) %>% 
+    right_join(data, by = c("org_id" = "tax_id"))
+  
+}
+check <- get_budget_data_open("https://next.obudget.org/api/download?query=SELECT%20year_requested%20AS%20%22%D7%A9%D7%A0%D7%94%22%2C%20supporting_ministry%20AS%20%22%D7%9E%D7%A9%D7%A8%D7%93%22%2C%20request_type%20AS%20%22%D7%A1%D7%95%D7%92%20%D7%AA%D7%9E%D7%99%D7%9B%D7%94%22%2C%20support_title%20AS%20%22%D7%A0%D7%95%D7%A9%D7%90%22%2C%20budget_code%2C%20budget_code%20AS%20%22%D7%9E%D7%A1%D7%A4%D7%A8%20%D7%AA%D7%A7%D7%A0%D7%94%22%2C%20%27supports%2F%27%20%7C%7C%20budget_code%20%7C%7C%20%27%2F%27%20%7C%7C%20year_requested%20%7C%7C%20%27%2F%27%20%7C%7C%20entity_id%20%7C%7C%20%27%2F%27%20%7C%7C%20request_type%20AS%20item_id%2C%20coalesce(entity_name%2C%20recipient)%20as%20%22%D7%9E%D7%A7%D7%91%D7%9C%20%D7%94%D7%AA%D7%9E%D7%99%D7%9B%D7%94%22%2C%20entity_id%20as%20%22%D7%9E%D7%A1%D7%A4%D7%A8%20%D7%AA%D7%90%D7%92%D7%99%D7%93%22%2C%20%27org%2F%27%20%7C%7C%20entity_kind%20%7C%7C%20%27%2F%27%20%7C%7C%20entity_id%20as%20entity_item_id%2C%20sum(amount_approved)%20as%20%22%D7%A1%D7%94%D7%B4%D7%9B%20%D7%90%D7%95%D7%A9%D7%A8%22%2C%20sum(amount_paid)%20as%20%22%D7%A1%D7%94%D7%B4%D7%9B%20%D7%A9%D7%95%D7%9C%D7%9D%22%20FROM%20raw_supports%20WHERE%20year_requested%20%3E0%20AND%20budget_code%20like%20%2700194202%25%25%27%20GROUP%20BY%201%2C%202%2C%203%2C%204%2C%205%2C%206%2C%207%2C%208%2C%209%2C%2010%20order%20by%20year_requested%20desc&format=csv&filename=%D7%9E%D7%99%D7%A0%D7%94%D7%9C%20%D7%94%D7%AA%D7%A8%D7%91%D7%95%D7%AA__%20%D7%A4%D7%99%D7%A8%D7%95%D7%98%20%D7%9B%D7%9C%20%D7%94%D7%AA%D7%9E%D7%99%D7%9B%D7%95%D7%AA%20%D7%9E%D7%AA%D7%A7%D7%A6%D7%99%D7%91%20%D7%96%D7%94%20%D7%A9%D7%90%D7%95%D7%A9%D7%A8%D7%95%20%D7%91%20%D7%9B%D7%9C%20%D7%94%D7%A9%D7%A0%D7%99%D7%9D&headers=%D7%A0%D7%95%D7%A9%D7%90%3Aitem_link(item_id)%3B%D7%9E%D7%A1%D7%A4%D7%A8%20%D7%AA%D7%A7%D7%A0%D7%94%3Abudget_code%3Asearch_term(budget_code)%3B%D7%9E%D7%A9%D7%A8%D7%93%3B%D7%A1%D7%95%D7%92%20%D7%AA%D7%9E%D7%99%D7%9B%D7%94%3B%D7%9E%D7%A7%D7%91%D7%9C%20%D7%94%D7%AA%D7%9E%D7%99%D7%9B%D7%94%3Aitem_link(entity_item_id)%3B%D7%9E%D7%A1%D7%A4%D7%A8%20%D7%AA%D7%90%D7%92%D7%99%D7%93%3B%D7%A9%D7%A0%D7%94%3B%D7%A1%D7%94%D7%B4%D7%9B%20%D7%90%D7%95%D7%A9%D7%A8%3Anumber%3B%D7%A1%D7%94%D7%B4%D7%9B%20%D7%A9%D7%95%D7%9C%D7%9D%3Anumber", 2014) %>% match_budget_org()
+```
+
 
 # Combining all data sources into one data frame
 
@@ -497,6 +548,9 @@ ses_2013_url <- "https://www.cbs.gov.il/he/publications/doclib/2017/socio_eco13_
 peri_2004_url <- "https://www.cbs.gov.il/he/mediarelease/doclib/2008/160/24_08_160t2.xls" # Initializing the url for 2004 CBS periphery data
 ses_sa_2008_url <- "https://www.cbs.gov.il/he/mediarelease/doclib/2013/087/24_13_087t6.xls" # Initializing the url for 2008 CBS atatistical areas data
 pop_2015_url <- "https://www.cbs.gov.il/he/publications/doclib/2019/hamakomiot1999_2017/2015.xls" # Initializing the url for 2015 CBS population data
+open_sela_url <- "https://next.obudget.org/api/download?query=SELECT%20year_requested%20AS%20%22%D7%A9%D7%A0%D7%94%22%2C%20supporting_ministry%20AS%20%22%D7%9E%D7%A9%D7%A8%D7%93%22%2C%20request_type%20AS%20%22%D7%A1%D7%95%D7%92%20%D7%AA%D7%9E%D7%99%D7%9B%D7%94%22%2C%20support_title%20AS%20%22%D7%A0%D7%95%D7%A9%D7%90%22%2C%20budget_code%2C%20budget_code%20AS%20%22%D7%9E%D7%A1%D7%A4%D7%A8%20%D7%AA%D7%A7%D7%A0%D7%94%22%2C%20%27supports%2F%27%20%7C%7C%20budget_code%20%7C%7C%20%27%2F%27%20%7C%7C%20year_requested%20%7C%7C%20%27%2F%27%20%7C%7C%20entity_id%20%7C%7C%20%27%2F%27%20%7C%7C%20request_type%20AS%20item_id%2C%20coalesce(entity_name%2C%20recipient)%20as%20%22%D7%9E%D7%A7%D7%91%D7%9C%20%D7%94%D7%AA%D7%9E%D7%99%D7%9B%D7%94%22%2C%20entity_id%20as%20%22%D7%9E%D7%A1%D7%A4%D7%A8%20%D7%AA%D7%90%D7%92%D7%99%D7%93%22%2C%20%27org%2F%27%20%7C%7C%20entity_kind%20%7C%7C%20%27%2F%27%20%7C%7C%20entity_id%20as%20entity_item_id%2C%20sum(amount_approved)%20as%20%22%D7%A1%D7%94%D7%B4%D7%9B%20%D7%90%D7%95%D7%A9%D7%A8%22%2C%20sum(amount_paid)%20as%20%22%D7%A1%D7%94%D7%B4%D7%9B%20%D7%A9%D7%95%D7%9C%D7%9D%22%20FROM%20raw_supports%20WHERE%20year_requested%20%3E0%20AND%20budget_code%20%3D%20%270019420256%27%20GROUP%20BY%201%2C%202%2C%203%2C%204%2C%205%2C%206%2C%207%2C%208%2C%209%2C%2010%20order%20by%20year_requested%20desc&format=csv&filename=%D7%A1%D7%9C%20%D7%9C%D7%AA%D7%A8%D7%91%D7%95%D7%AA%20%D7%A2%D7%99%D7%A8%D7%95%D7%A0%D7%99%D7%AA__%20%D7%A4%D7%99%D7%A8%D7%95%D7%98%20%D7%9B%D7%9C%20%D7%94%D7%AA%D7%9E%D7%99%D7%9B%D7%95%D7%AA%20%D7%9E%D7%AA%D7%A7%D7%A6%D7%99%D7%91%20%D7%96%D7%94%20%D7%A9%D7%90%D7%95%D7%A9%D7%A8%D7%95%20%D7%91%20%D7%9B%D7%9C%20%D7%94%D7%A9%D7%A0%D7%99%D7%9D&headers=%D7%A0%D7%95%D7%A9%D7%90%3Aitem_link(item_id)%3B%D7%9E%D7%A1%D7%A4%D7%A8%20%D7%AA%D7%A7%D7%A0%D7%94%3Abudget_code%3Asearch_term(budget_code)%3B%D7%9E%D7%A9%D7%A8%D7%93%3B%D7%A1%D7%95%D7%92%20%D7%AA%D7%9E%D7%99%D7%9B%D7%94%3B%D7%9E%D7%A7%D7%91%D7%9C%20%D7%94%D7%AA%D7%9E%D7%99%D7%9B%D7%94%3Aitem_link(entity_item_id)%3B%D7%9E%D7%A1%D7%A4%D7%A8%20%D7%AA%D7%90%D7%92%D7%99%D7%93%3B%D7%A9%D7%A0%D7%94%3B%D7%A1%D7%94%D7%B4%D7%9B%20%D7%90%D7%95%D7%A9%D7%A8%3Anumber%3B%D7%A1%D7%94%D7%B4%D7%9B%20%D7%A9%D7%95%D7%9C%D7%9D%3Anumber"
+
+culture_2014_url <- "https://next.obudget.org/api/download?query=SELECT%20year_requested%20AS%20%22%D7%A9%D7%A0%D7%94%22%2C%20supporting_ministry%20AS%20%22%D7%9E%D7%A9%D7%A8%D7%93%22%2C%20request_type%20AS%20%22%D7%A1%D7%95%D7%92%20%D7%AA%D7%9E%D7%99%D7%9B%D7%94%22%2C%20support_title%20AS%20%22%D7%A0%D7%95%D7%A9%D7%90%22%2C%20budget_code%2C%20budget_code%20AS%20%22%D7%9E%D7%A1%D7%A4%D7%A8%20%D7%AA%D7%A7%D7%A0%D7%94%22%2C%20%27supports%2F%27%20%7C%7C%20budget_code%20%7C%7C%20%27%2F%27%20%7C%7C%20year_requested%20%7C%7C%20%27%2F%27%20%7C%7C%20entity_id%20%7C%7C%20%27%2F%27%20%7C%7C%20request_type%20AS%20item_id%2C%20coalesce(entity_name%2C%20recipient)%20as%20%22%D7%9E%D7%A7%D7%91%D7%9C%20%D7%94%D7%AA%D7%9E%D7%99%D7%9B%D7%94%22%2C%20entity_id%20as%20%22%D7%9E%D7%A1%D7%A4%D7%A8%20%D7%AA%D7%90%D7%92%D7%99%D7%93%22%2C%20%27org%2F%27%20%7C%7C%20entity_kind%20%7C%7C%20%27%2F%27%20%7C%7C%20entity_id%20as%20entity_item_id%2C%20sum(amount_approved)%20as%20%22%D7%A1%D7%94%D7%B4%D7%9B%20%D7%90%D7%95%D7%A9%D7%A8%22%2C%20sum(amount_paid)%20as%20%22%D7%A1%D7%94%D7%B4%D7%9B%20%D7%A9%D7%95%D7%9C%D7%9D%22%20FROM%20raw_supports%20WHERE%20year_requested%20%3E0%20AND%20budget_code%20like%20%2700194202%25%25%27%20GROUP%20BY%201%2C%202%2C%203%2C%204%2C%205%2C%206%2C%207%2C%208%2C%209%2C%2010%20order%20by%20year_requested%20desc&format=csv&filename=%D7%9E%D7%99%D7%A0%D7%94%D7%9C%20%D7%94%D7%AA%D7%A8%D7%91%D7%95%D7%AA__%20%D7%A4%D7%99%D7%A8%D7%95%D7%98%20%D7%9B%D7%9C%20%D7%94%D7%AA%D7%9E%D7%99%D7%9B%D7%95%D7%AA%20%D7%9E%D7%AA%D7%A7%D7%A6%D7%99%D7%91%20%D7%96%D7%94%20%D7%A9%D7%90%D7%95%D7%A9%D7%A8%D7%95%20%D7%91%20%D7%9B%D7%9C%20%D7%94%D7%A9%D7%A0%D7%99%D7%9D&headers=%D7%A0%D7%95%D7%A9%D7%90%3Aitem_link(item_id)%3B%D7%9E%D7%A1%D7%A4%D7%A8%20%D7%AA%D7%A7%D7%A0%D7%94%3Abudget_code%3Asearch_term(budget_code)%3B%D7%9E%D7%A9%D7%A8%D7%93%3B%D7%A1%D7%95%D7%92%20%D7%AA%D7%9E%D7%99%D7%9B%D7%94%3B%D7%9E%D7%A7%D7%91%D7%9C%20%D7%94%D7%AA%D7%9E%D7%99%D7%9B%D7%94%3Aitem_link(entity_item_id)%3B%D7%9E%D7%A1%D7%A4%D7%A8%20%D7%AA%D7%90%D7%92%D7%99%D7%93%3B%D7%A9%D7%A0%D7%94%3B%D7%A1%D7%94%D7%B4%D7%9B%20%D7%90%D7%95%D7%A9%D7%A8%3Anumber%3B%D7%A1%D7%94%D7%B4%D7%9B%20%D7%A9%D7%95%D7%9C%D7%9D%3Anumber"
 
 muni_df <- read_muni_new(muni_2018_url) %>% 
   rename(muni_id = 2)
@@ -505,7 +559,7 @@ elec_df <- read_elec_general(elec_url) %>%  # Reading the general elections raw 
   match_yishuv_muni(2) %>% # Adding the linked yishuvim and municipalities to elections data
   get_elect_pct() # Calculating elections data by municipality
 
-budget_open_df <- get_sela_data_open(2018) %>% # Reading and manipulating Sela open budget data by year and municipality
+budget_open_df <- get_budget_data_open(open_sela_url ,2018) %>% # Reading and manipulating Sela open budget data by year and municipality
   match_budget_muni() # Adding the cbs municipality id
 
 budget_culture_df <- get_sela_data_culture(2018) %>% # Reading and manipulating Sela ministry of culture budget data by year and municipality
@@ -521,6 +575,9 @@ nat_pri_df <- get_nat_pri_munis() # Reading 2013 national priority areas governm
 
 pop_2015_df <- read_muni_old(pop_2015_url, 14, 31) %>% 
   rename(pop_2015 = var)# Reading the 2015 CBS population data
+
+budget_culture_2014_df <- get_budget_data_open(culture_2014_url, 2014)
+  
 
 raw_df <- muni_df %>% 
   left_join(elec_df, by = "muni_id") %>% 
@@ -540,58 +597,3 @@ raw_df <- muni_df %>%
 
 ```
 
-# Future Code that is not operatable right now
-
-## Binding municipality files for 2016-2019 by row
-
-Right now there is an error
-
-```{r}
-
-bind_muni_2016_2019 <- function(){
-  url_2016 <- "https://www.cbs.gov.il/he/publications/doclib/2019/hamakomiot1999_2017/2016.xlsx"
-  url_2017 <- "https://www.cbs.gov.il/he/mediarelease/doclib/2019/057/24_19_057t1.xlsx"
-  url_2018 <- "https://www.cbs.gov.il/he/publications/doclib/2019/hamakomiot1999_2017/2018.xlsx"
-  url_2019 <- "https://www.cbs.gov.il/he/publications/doclib/2019/hamakomiot1999_2017/2019.xlsx"
-  
-  df_2016 <- read_muni_new(url_2016)
-  df_2017 <- read_muni_new(url_2017)
-  df_2018 <- read_muni_new(url_2018)
-  df_2019 <- read_muni_new(url_2019)
-  
-  muni_df <- bind_rows(
-    df_2016,
-    df_2017#,
-#    df_2018,
-#    df_2019
-    )
-  
-  muni_df
-  
-}
-```
-
-## Import a single municipalities file (2015 and earlier)
-
-I read the municipalities file by url, extracts the two tables of local municipalities and regional councils, and merges them.
-Right now there is an error because of the merging process.
-
-```{r}
-
-read_muni_old <- function(url){
-  file_ext <- str_extract(url, "[0-9a-z]+$")
-  GET(url, write_disk(tf <- tempfile(fileext = file_ext)))
-  
-  df2 <- read_excel(tf, sheet = 2, skip = 1)
-  df2 <- df2 %>% drop_na(3)
-  
-  df3 <- read_excel(tf, sheet = 4, skip = 1)
-  df3 <- df3 %>% drop_na(3)
-  
-  df <- bind_rows(df2, df3)
-  return(df)
-
-}
-
-# df <- read_muni_old("https://www.cbs.gov.il/he/publications/doclib/2019/hamakomiot1999_2017/2015.xls")
-```

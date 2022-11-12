@@ -83,7 +83,7 @@ Right now it seems we have two municipalities that are seemingly not eligible fo
 
 ## Initiatives eligibility
 
-The eligibility score of each municipality is calculated: first the unbudgeted municipalities are filtered out and then the score is calculated according the the regulations. the score is normalized between all eligible municipalities and then multiplied by a number close to the total budget allocated. the specific number was decided through trial and error to match the vast majority of municipalities. A ration between potential budget and score is calculated. Finally, summary charts and tables are presented.
+The eligibility score of each municipality is calculated: first the unbudgeted municipalities are filtered out and then the score is calculated according the the regulations. the score is normalized between all eligible municipalities and then multiplied by a number close to the total budget allocated. the specific number was decided through trial and error to match the vast majority of municipalities. A ratio between potential budget and score is calculated. Finally, summary charts and tables are presented.
 ```{r}
 sela_df <- sela_df %>% 
   mutate(
@@ -278,8 +278,8 @@ sela_mdl1 %>%
 sela_mdl1 %>% 
   augment() %>% 
   ggplot(aes(likud_pct, color = sector)) + 
-  geom_line(aes(y = .fitted)) +
-  geom_point(aes(y = budget_elig_tot_capita_pw.3))
+  geom_point(aes(y = budget_elig_tot_capita_pw.3)) +
+  geom_line(aes(y = .fitted))
 ```
 ### Linear model per capita untransformed
 ```{r}
@@ -297,6 +297,8 @@ sela_mdl1a %>%
   geom_line(aes(y = .fitted)) +
   geom_point()
 ```
+The per capita budget modelling, both transformed and untransformed, went unsuccessful, as the slope coefficient for the jewish sector was negative.
+We will now examine total budget rather than per capita budget.
 
 ## total budget modelling
 ### Check distribution of dependant variable
@@ -328,6 +330,8 @@ sela_mdl2 %>%
   geom_line(aes(y = .fitted)) +
   geom_point()
 ```
+This shows a good relationship so that jewish municipalities are eceiveing more budget as the Likud voting percent rises.
+
 ### Model with coalition voting percent
 ```{r}
 sela_mdl2 <- lm(budget_elig_tot ~ sector * coal_pct, data = sela_df)
@@ -344,4 +348,6 @@ sela_mdl2 %>%
   geom_line(aes(y = .fitted)) +
   geom_point()
 ```
+This model is even stronger, also showing a positive relationship between total SELA budget and coalition parties voting percentage, but with an adjusted R-Squared of 0.22.
 
+The next thing to look at is the difference between the eligibility for SELA budget of each municipality and the hypothetical budget it would have received according to the 2014 distribution of total Ministry of Culture budget to organizations by their municipality.
