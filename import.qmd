@@ -504,6 +504,20 @@ get_org_data <- function(){
 }
 ```
 
+## Getting all of the registered companies and their organization's id
+```{r}
+get_comp_data <- function(){
+  comps_raw <- read_csv("data_files/companies.csv")
+  comps_raw %>% 
+    select(
+      org_id = 1,
+      yishuv_name = 13
+    ) %>% 
+    filter(!is.na(yishuv_name))  
+}
+```
+
+
 ## Match every name of an organization's yishuv with a yishuv id
 This function gets a data frame with a column for a yishuv name and matches it with a yishuv id using a preexisting list of yishuvim names and id's
 ```{r}
@@ -518,7 +532,8 @@ check <- orgs %>% match_yishuv_name()
 check <- check %>% filter(is.na(yishuv_id)) %>% distinct(yishuv_name, .keep_all = TRUE) %>% arrange(yishuv_name)
 ```
 ## Match every Amuta in budget data with its municipality id
-This function takes a data frame, usually of some budget, and adds the municipality id for every tax id in the budget. Right now the function is succesful for municipalities and amutot, but it also needs data for business companies. after this is achieved, another function needs to be built to summarize the budget data per municipality.
+This function takes a data frame, usually of some budget, and adds the municipality id for every tax id in the budget. Right now the function is successful for municipalities and amutot, but it also needs data for business companies. after this is achieved, another function needs to be built to summarize the budget data per municipality.
+The companies data currebtly works, but some companies have their city name in the streen name variable. need to think how to resolve this.
 
 ```{r}
 match_budget_org <- function(data){
@@ -527,8 +542,10 @@ match_budget_org <- function(data){
       org_id = tax_id,
       muni_id = cbs_id
     )
+  comps <- get_comp_data()
 
   get_org_data() %>% 
+    bind_rows(comps) %>% 
     match_yishuv_name() %>% 
     match_yishuv_muni(id_col_num = 3) %>% 
     bind_rows(munis) %>% 
