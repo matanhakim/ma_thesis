@@ -1,0 +1,80 @@
+---
+title: "Thesis - Code Scraps"
+toc: true
+number-sections: true
+format: gfm
+  code-fold: true
+warning: false
+output: false
+error: true
+editor_options: 
+  markdown: 
+    wrap: sentence
+---
+
+# Extract a yishuv name for a company from a street name
+This function is a vectorised form of str_extract. for every single string (company name, in our case) the function iterates over the vector of patterns (yishuvim names, in our case) and returnes a vector with the length of yishuvim names with the yishuv name that matches, or NA. After that, the NA's are removed and the first matching yishuv name is kept and turned into a charachter vector with the length of string.
+```{r}
+str_extract_vec <- function(string, pattern_vec){
+  map_chr(  
+    map(string, ~ str_extract(., pattern_vec)),
+    ~ first(na.omit(.))
+  )
+}
+
+```
+
+
+# Binding municipality files for 2016-2019 by row
+
+Right now there is an error
+
+```{r}
+
+bind_muni_2016_2019 <- function(){
+  url_2016 <- "https://www.cbs.gov.il/he/publications/doclib/2019/hamakomiot1999_2017/2016.xlsx"
+  url_2017 <- "https://www.cbs.gov.il/he/mediarelease/doclib/2019/057/24_19_057t1.xlsx"
+  url_2018 <- "https://www.cbs.gov.il/he/publications/doclib/2019/hamakomiot1999_2017/2018.xlsx"
+  url_2019 <- "https://www.cbs.gov.il/he/publications/doclib/2019/hamakomiot1999_2017/2019.xlsx"
+  
+  df_2016 <- read_muni_new(url_2016)
+  df_2017 <- read_muni_new(url_2017)
+  df_2018 <- read_muni_new(url_2018)
+  df_2019 <- read_muni_new(url_2019)
+  
+  muni_df <- bind_rows(
+    df_2016,
+    df_2017#,
+#    df_2018,
+#    df_2019
+    )
+  
+  muni_df
+  
+}
+```
+
+# Import a single municipalities file (2015 and earlier)
+
+I read the municipalities file by url, extracts the two tables of local municipalities and regional councils, and merges them.
+Right now there is an error because of the merging process.
+
+```{r}
+
+read_muni_old <- function(url){
+  file_ext <- str_extract(url, "[0-9a-z]+$")
+  GET(url, write_disk(tf <- tempfile(fileext = file_ext)))
+  
+  df2 <- read_excel(tf, sheet = 2, skip = 1)
+  df2 <- df2 %>% drop_na(3)
+  
+  df3 <- read_excel(tf, sheet = 4, skip = 1)
+  df3 <- df3 %>% drop_na(3)
+  
+  df <- bind_rows(df2, df3)
+  return(df)
+
+}
+
+# df <- read_muni_old("https://www.cbs.gov.il/he/publications/doclib/2019/hamakomiot1999_2017/2015.xls")
+```
