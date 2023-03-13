@@ -22,7 +22,25 @@ library(tidymodels)
 library(modelr)
 library(corrr)
 library(ggfortify)
+library(DescTools)
+library(scales)
+library(gtsummary)
+library(flextable)
+# library(showtext)
 ```
+
+# Graphics
+```{r}
+theme_set(theme_light())
+
+# font_add(family = "David", regular = "David.ttf")
+# showtext_auto()
+# 
+# theme_update(
+#   text = element_text(family = "David")
+# )
+```
+
 
 # Selecting relevant variables
 ```{r}
@@ -109,7 +127,8 @@ sela_df <- sela_df %>%
 
 ratio_elig_init <- sela_df %>% 
   summarize(budget_elig_init / score_elig_init) %>% 
-  pull() %>% first()
+  pull() %>%
+  first()
 
 sela_df %>% 
   ggplot(aes(budget_approved_init - budget_elig_init)) +
@@ -305,15 +324,41 @@ We will now examine total budget rather than per capita budget.
 ```{r}
 sela_df %>% 
   ggplot(aes(budget_elig_tot)) +
-  geom_histogram(aes(y = ..density..)) +
-  geom_density()
+  geom_histogram() +
+  theme_minimal() +
+  scale_x_continuous(labels = label_comma()) +
+  labs(
+    x = 'גובה הזכאות של רשות מקומית לתמיכה תקציבית של תקנת סל"ע בשנת 2018 (ש"ח)',
+    y = "מספר רשויות"
+  )
+  
 
 sela_df %>% 
   summarise(
+    mean = mean(budget_elig_tot),
+    sd = sd(budget_elig_tot),
     skewness = skewness(budget_elig_tot),
     kurtosis = kurtosis(budget_elig_tot)
   )
 ```
+
+### Distribution table of all variables
+```{r}
+sela_df %>% 
+  select(
+    budget_elig_tot,
+    pop_2015,
+    ses_2013_c,
+    peri_2004_c,
+    sector,
+    likud_pct
+  ) %>% 
+  tbl_summary(
+    statistic = list(all_continuous() ~ "{mean} ({sd})")
+  )
+```
+
+
 ### Model with Likud voting percent
 ```{r}
 sela_mdl2 <- lm(budget_elig_tot ~ sector * likud_pct, data = sela_df)
@@ -330,7 +375,7 @@ sela_mdl2 %>%
   geom_line(aes(y = .fitted)) +
   geom_point()
 ```
-This shows a good relationship so that jewish municipalities are eceiveing more budget as the Likud voting percent rises.
+This shows a good relationship so that jewish municipalities are receiveing more budget as the Likud voting percent rises.
 
 ### Model with coalition voting percent
 ```{r}
@@ -350,4 +395,266 @@ sela_mdl2 %>%
 ```
 This model is even stronger, also showing a positive relationship between total SELA budget and coalition parties voting percentage, but with an adjusted R-Squared of 0.22.
 
+Let's check if it still stands after adding control variables
+
+```{r}
+sela_mdl3 <- lm(budget_elig_tot ~ sector : likud_pct + pop_2015 + ses_2013_c + peri_2004_c, data = sela_df)
+sela_mdl3_control <- lm(budget_elig_tot ~ pop_2015 + ses_2013_c + peri_2004_c, data = sela_df)
+sela_mdl3_control2 <- lm(budget_elig_tot ~ pop_2015 + ses_2013_c + peri_2004_c + is_nat_pri, data = sela_df)
+anova(sela_mdl3_control, sela_mdl3)
+
+sela_mdl3 %>% 
+  tidy()
+
+sela_mdl3 %>% 
+  glance()
+
+sela_mdl3_control %>% 
+  tidy()
+
+sela_mdl3_control %>% 
+  glance()
+
+sela_mdl3 %>% 
+  augment() %>% 
+  ggplot(aes(likud_pct, budget_elig_tot, color = sector)) + 
+  geom_line(aes(y = .fitted)) +
+  geom_point()
+
+sela_mdl3 %>% 
+  augment() %>% 
+  ggplot(aes(likud_pct, .fitted - sela_mdl3_control %>% augment() %>% pull(.fitted), color = sector)) + 
+  geom_line() +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+```
+The model is still significant for Likud voting percentage after adding control variables.
+This is not the case for coalition voting percentage.
+
+Let's create a better plot for the last plot of the difference between the two models.
+```{r}
+sela_mdl3 %>% 
+  augment() %>% 
+  ggplot(aes(
+    likud_pct, .fitted - sela_mdl3_control %>% augment() %>% pull(.fitted),
+    color = sector,
+    shape = sector
+  )) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_y_continuous(labels = label_comma()) +
+  scale_x_continuous(labels = label_percent(scale = 1)) +
+  scale_color_discrete(labels = c("ערבי", "יהודי")) +
+  scale_shape_discrete(labels = c("ערבי", "יהודי")) +
+  guides(shape = guide_legend(override.aes = list(size = 3))) +
+  theme(legend.position = "bottom") +
+  labs(
+    x = "אחוז הצבעה לליכוד בבחירות 2015",
+    y = '\u202B"דיבידנד הנאמנות בתרבות" (ש"ח)',
+    color = "מגזר",
+    shape = "מגזר"
+  )
+
+```
+
+
+Let's put the two models in a table.
+
+```{r}
+tbl_merge(
+  list(
+    tbl_regression(
+      sela_mdl3_control,
+      intercept = TRUE,
+      conf.int = FALSE
+    ) %>% 
+      modify_header(
+        statistic = "**t-statistic**",
+        std.error = "**SE**"
+      ) %>% 
+      bold_p() %>% 
+      add_glance_table(
+        include = c(r.squared, statistic)
+      )
+    ,
+    tbl_regression(
+      sela_mdl3,
+      intercept = TRUE,
+      conf.int = FALSE
+    ) %>% 
+      modify_header(
+        statistic = "**t-statistic**",
+        std.error = "**SE**"
+      ) %>% 
+      bold_p() %>% 
+      add_glance_table(
+        include = c(r.squared, statistic)
+      )
+  ),
+  tab_spanner = c("M1", "M2")
+) %>% 
+  modify_table_body(~.x %>% arrange(row_type == "glance_statistic")) %>% 
+  as_flex_table()
+```
+
+Let's check the distribution of voting to Likud across SES clusters.
+```{r}
+elec_more_df <- df %>% 
+  mutate(
+    likud_votes = good_votes * (likud_pct / 100),
+    ses_2013_c = factor(ses_2013_c)
+  )
+
+elec_more_df %>% 
+  group_by(ses_2013_c) %>% 
+  summarise(likud_pct = round(sum(likud_votes) / sum(good_votes) * 100, 1)) %>% 
+  ggplot(aes(ses_2013_c, likud_pct)) +
+  geom_col() + 
+  geom_text(
+      aes(label = paste0(round(likud_pct, digits = 1), "%")),
+      vjust = -0.5
+  ) +
+  scale_y_continuous(
+    labels = label_percent(scale = 1),
+    expand = expansion(mult = c(0, 0.1))
+  ) +
+  labs(
+    x = "\u202Bאשכול חברתי-כלכלי (2013)",
+    y = "\u202Bאחוז הצבעה לליכוד בבחירות 2015"
+  )
+```
+
+
+Since SES cluster 7 had special criteria, Let's look at the Likud voting patterns within them.
+
+```{r}
+ses_7_df <- elec_more_df %>% 
+  filter(ses_2013_c == "7")
+
+ses_7_df %>% 
+  count(is_nat_pri, type == "מועצה אזורית" & peri_2004_c <= 2)
+
+ses_7_df %>% 
+  group_by(is_nat_pri) %>% 
+  summarise(likud_pct = round(sum(likud_votes) / sum(good_votes) * 100, 1)) %>% 
+  ggplot(aes(is_nat_pri, likud_pct)) +
+  geom_col() + 
+  geom_text(
+      aes(label = paste0(round(likud_pct, digits = 1), "%")),
+      vjust = -0.5
+  ) +
+  scale_y_continuous(
+    labels = label_percent(scale = 1),
+    expand = expansion(mult = c(0, 0.1))
+  ) +
+  labs(
+    x = "אזור עדיפות לאומית",
+    y = "אחוז הצבעה לליכוד"
+  )
+
+# by a simple mean and not total mean
+ses_7_df %>% 
+  group_by(is_nat_pri) %>% 
+  summarise(likud_pct = round(mean(likud_pct), 1)) %>% 
+  ggplot(aes(is_nat_pri, likud_pct)) +
+  geom_col() + 
+  geom_text(
+      aes(label = paste0(round(likud_pct, digits = 1), "%")),
+      vjust = -0.5
+  ) +
+  scale_y_continuous(
+    labels = label_percent(scale = 1),
+    expand = expansion(mult = c(0, 0.1))
+  ) +
+  labs(
+    x = "אזור עדיפות לאומית",
+    y = "אחוז הצבעה לליכוד"
+  )
+
+# by eligibility criterea for initiatives
+elec_more_df %>% 
+  filter(ses_2013_c %in% c("7", "8", "9", "10")) %>% 
+  mutate(special_elig_init = is_nat_pri | peri_2004_c <= 2) %>% 
+  group_by(special_elig_init) %>% 
+  summarise(likud_pct = round(mean(likud_pct), 1)) %>% 
+  ggplot(aes(special_elig_init, likud_pct)) +
+  geom_col() + 
+  geom_text(
+      aes(label = paste0(round(likud_pct, digits = 1), "%")),
+      vjust = -0.5
+  ) +
+  scale_y_continuous(
+    labels = label_percent(scale = 1),
+    expand = expansion(mult = c(0, 0.1))
+  ) +
+  labs(
+    x = "אזור עדיפות לאומית או רשות פריפריאלית",
+    y = "אחוז הצבעה לליכוד"
+  )
+```
+
+
+
 The next thing to look at is the difference between the eligibility for SELA budget of each municipality and the hypothetical budget it would have received according to the 2014 distribution of total Ministry of Culture budget to organizations by their municipality.
+
+## difference in hypothetical distribution modelling
+### Create the difference
+```{r}
+sela_df <- sela_df %>% 
+  mutate(
+    budget_pct_tot_2014 = budget_approved_2014 / sum(budget_approved_2014), # percent of total 2014 culture budget going to this municipality
+    budget_sela_hypo_2018 = sum(budget_elig_tot) * budget_pct_tot_2014, # the hypothetical SELA budget that would be going to the municipality in 2018 if the budget was distributed by the 2014 distribution
+    budget_sela_hypo_diff = budget_elig_tot - budget_sela_hypo_2018, # the difference between the real SELA budget eligibility of a municipality in 2018 and the hypothetical eligibility by 2014 distribution
+    budget_sela_hypo_diff_capita = budget_sela_hypo_diff / pop_2015
+  )
+
+sela_df %>% 
+  filter(budget_sela_hypo_diff > -500000) %>% 
+  ggplot(aes(budget_sela_hypo_diff)) +
+  geom_histogram()
+
+sela_df %>% 
+  filter(budget_sela_hypo_diff < -500000) %>% arrange(budget_sela_hypo_diff)
+
+sela_df %>% 
+  ggplot(aes(budget_sela_hypo_diff_capita)) +
+  geom_histogram() + 
+  geom_density(aes(y = ..count..))
+
+sela_df %>% 
+  filter(budget_sela_hypo_diff < -500000) %>% arrange(budget_sela_hypo_diff)
+
+sela_df %>% 
+  mutate(budget_sela_hypo_diff_log10 = log10(1 - min(budget_sela_hypo_diff) + budget_sela_hypo_diff)) %>% 
+  ggplot(aes(budget_sela_hypo_diff_log10)) +
+  geom_histogram()
+```
+### Model the hypothetical difference per capita
+```{r}
+sela_df %>% 
+  select(-c(name, muni_id, budget_sela_hypo_diff_capita, sa_data, contains("budget"))) %>% 
+  map(~ lm(budget_sela_hypo_diff_capita ~ .x, data = sela_df )) %>% 
+  map(glance) %>% 
+  map("r.squared") %>% 
+  as_tibble() %>% 
+  pivot_longer(everything() ,names_to = "var", values_to = "r.squared") %>% 
+  arrange(desc(r.squared))
+  
+lm(budget_sela_hypo_diff_capita ~ peri_2004_c + ses_2013_c + sector * coal_pct + type , data = sela_df) %>% 
+  glance()
+lm(budget_sela_hypo_diff_capita ~ peri_2004_c + ses_2013_c + sector * coal_pct + type , data = sela_df) %>% 
+  tidy()
+```
+
+Can't model the hypothetical budget with political variables.
+
+# Gini
+
+```{r}
+df %>% 
+  summarise(
+    gini_2018 = Gini(budget_approved, weights = pop),
+    gini_2014 = Gini(budget_approved_2014, weights = pop)
+  )
+```
+

@@ -398,6 +398,35 @@ df %>%
 Obviously, the rank variable is evenly distributed by definition.
 We will use the index variable as it is normally distributed and carries the most information with it.
 
+Let's treat some missing values in the periphery data of 6 municipalities. They are municipalities that did not exist in 2004. We will replace their missing values with the 2015 periphery data.
+```{r}
+na_peri_muni <- c(
+  "0483", # Bueina
+  "0628", # Jat
+  "0490", # Dir ElAssad
+  "0534", # Osfia
+  "69", # AlQasum
+  "68" # Neve Midbar
+)
+
+replace_match_na <- function(x, id, na_vec, replace_with) {
+  case_match(
+    {{ id }},
+    na_vec ~ {{ replace_with }},
+    .default = x
+  )
+}
+
+df <- df %>% 
+  mutate(
+    peri_2004_i = replace_match_na(peri_2004_i, muni_id, na_peri_muni, peri_i_2015),
+    peri_2004_r = replace_match_na(peri_2004_r, muni_id, na_peri_muni, peri_r_2015),
+    peri_2004_c = replace_match_na(peri_2004_c, muni_id, na_peri_muni, peri_c_2015)
+  )
+```
+
+
+
 ## Voting
 
 ```{r}
