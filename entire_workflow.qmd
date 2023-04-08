@@ -25,11 +25,21 @@ library(readxl)
 
 # Utility functions
 
+This function finds the file extension of a file.
+It receives a string as an argument, and returns the last letters and numbers of the string, prefixed by a dot (`.`).
+This helps to identify the file type from a file path, mainly used to write temporary files to disk when reading Excel files.
+
 ```{r}
 get_file_ext <- function(string) {
   str_c(".", str_extract(string, "[0-9a-z]+$"))
 }
 ```
+
+This function helps to fix column names of Excel tables, mainly of the form of those found in Israeli CBS municipality data.
+It does so by fixing a single row of to-be column names.
+It receives a data frame, an integer number representing a single row considered as holding (some of the) variable names, and a logical length-one vector specifying whether to fill missing values with preceding values or not.
+This last argument is mostly used in the case of merged cells in Excel files.
+The function first transposes the row, and then either fills it with values or turns NAs to empty strings.
 
 ```{r}
 fix_names <- function(data, row_num, fill_missing) {
@@ -57,6 +67,13 @@ fix_names <- function(data, row_num, fill_missing) {
     pull(value)
 }
 ```
+
+This function fixes column names of Excel tables, mainly of the form of those found in Israeli CBS municipality data.
+It receives a data frame, a vector with the row numbers considered as holding the variable names, and a logical vector specifying whether to fill missing values with preceding values or not.
+This last argument should be either of length 1, or of length of `row_num`.
+It is mostly used in the case of merged cells in Excel files.
+The function saves the new column names by iterating over every row, fixing the variable names, binding all names to a single tibble, uniting the different columns to a single column and pulling these values as a vector. The old rows containg these column names are filtered out, and the new merged and fixed names are set to the data frame, which is then returned.
+
 
 
 ```{r}
