@@ -108,37 +108,16 @@ later, it reads the two lines of names of variables and handles each one of them
 The upper row gets filled with previous variable names for NAs because of merged cells in the original table.
 The lower row gets blank string for NAs.
 When concatenating, if there is a second argument for the variable, the variable name gets padded with blank space between its two arguments.
+Finally, these column names are added to the tibble. The tibble is read again to ensure good guessing of column types.
 
 ```{r}
 read_muni_new <- function(path, is_online = FALSE) {
   if (is_online)
     GET(path, write_disk(path <- tempfile(fileext = get_file_ext(path))))
   
-  df_head <- read_excel(path, sheet = 2, skip = 3, n_max = 2, col_names = FALSE)
-  
-  col_names_1 <- df_head |> 
-    slice(1) |> 
-    pivot_longer(everything()) |> 
-    select(value) |> 
-    fill(value)
-  
-  col_names_2 <- df_head |> 
-    slice(2) |> 
-    pivot_longer(everything()) |> 
-    select(value) |> 
-    replace_na(list(value = ""))
-  
-  df_col_names <- bind_cols(col_names_1, col_names_2) |> 
-    mutate(
-      col_names_merged = if_else(
-        str_length(value...2) > 0,
-        str_c(value...1, value...2, sep = " "),
-        str_c(value...1, value...2)
-      )
-    )
-  
-  col_names_merged <- df_col_names |> 
-    pull(col_names_merged)
+  col_names_merged <- read_excel(path, sheet = 2, skip = 3, n_max = 2, col_names = FALSE) |> 
+    merge_names(names_num = 2, fill_missing = c(TRUE, FALSE)) |> 
+    names()
   
   read_excel(path, sheet = 2, skip = 5, col_names = col_names_merged)
 }
