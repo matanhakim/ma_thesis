@@ -22,6 +22,15 @@ library(rvest)
 locale("he")
 ```
 
+# Utility functions
+
+```{r}
+get_file_ext <- function(string) {
+  str_c(".", str_extract(string, "[0-9a-z]+$"))
+}
+```
+
+
 # Municipalities data
 
 ## Import a single municipalities file from CBS (2016 and later)
@@ -36,8 +45,7 @@ When concatenating, if there is a second argument for the variable, the variable
 ```{r}
 
 read_muni_new <- function(url){
-  file_ext <- str_extract(url, "[0-9a-z]+$")
-  GET(url, write_disk(tf <- tempfile(fileext = file_ext)))
+  GET(url, write_disk(tf <- tempfile(fileext = get_file_ext(url))))
   
   df_head <- read_excel(tf, sheet = 2, skip = 3, n_max = 2, col_names = FALSE)
   
@@ -75,8 +83,7 @@ This function takes the url of the file, the wanted column numbers for the citie
 It returns a tibble with a municipality id and the wanted variable values.
 ```{r}
 read_muni_old <- function(url, col_num_1, col_num_2){
-  file_ext <- str_extract(url, "[0-9a-z]+$")
-  GET(url, write_disk(tf <- tempfile(fileext = file_ext)))  
+  GET(url, write_disk(tf <- tempfile(fileext = get_file_ext(url))))  
   
   df1 <- read_excel(tf, sheet = 2, skip = 1)
   df2 <- read_excel(tf, sheet = 4, skip = 1)
@@ -110,8 +117,7 @@ If there is no municipality id, it means that the yishuv is either unrecognized 
 get_yishuv_muni <- function(){
 
   url <- "https://www.cbs.gov.il/he/publications/doclib/2019/ishuvim/bycode2021.xlsx"
-  file_ext <- str_extract(url, "[0-9a-z]+$")
-  GET(url, write_disk(tf <- tempfile(fileext = file_ext)))  
+  GET(url, write_disk(tf <- tempfile(fileext = get_file_ext(url))))  
   
   yishuvim <- read_excel(tf, col_types = "text")
   
@@ -144,8 +150,7 @@ important to note this function is currently only applicable to excel files
 ```{r}
 
 read_elec_general <- function(url){
-  file_ext <- str_extract(url, "[0-9a-z]+$")
-  GET(url, write_disk(tf <- tempfile(fileext = file_ext)))
+  GET(url, write_disk(tf <- tempfile(fileext = get_file_ext(url))))
   
   df <- read_excel(tf)
   
@@ -261,8 +266,7 @@ This function reads the XLSX file from the ministry of culture official website[
 get_sela_data_culture <- function(year_param){
   url <- "https://www.gov.il/BlobFolder/generalpage/ministry_support/he/%D7%AA%D7%9E%D7%99%D7%9B%D7%95%D7%AA%20%D7%94%D7%9E%D7%A9%D7%A8%D7%93%20%D7%9C%D7%92%D7%95%D7%A4%D7%99%20%D7%AA%D7%A8%D7%91%D7%95%D7%AA%202016-2019.xlsx"
   
-  file_ext <- str_extract(url, "[0-9a-z]+$")
-  GET(url, write_disk(tf <- tempfile(fileext = file_ext)))
+  GET(url, write_disk(tf <- tempfile(fileext = get_file_ext(url))))
   df <- read_excel(tf, sheet = 39)
   
   df %>% 
@@ -336,8 +340,7 @@ It reads the file, selects the relevant variables, removes excess rows, and tran
 
 ```{r}
 read_ses_2013 <- function(url){
-  file_ext <- str_extract(url, "[0-9a-z]+$")
-  GET(url, write_disk(tf <- tempfile(fileext = file_ext)))
+  GET(url, write_disk(tf <- tempfile(fileext = get_file_ext(url))))
   
   df <- read_excel(tf, skip = 6)
   
@@ -369,8 +372,7 @@ Important to note that this is and old indicator, therefore since then some muni
 
 ```{r}
 read_peri_2004 <- function(url){
-  file_ext <- str_extract(url, "[0-9a-z]+$")
-  GET(url, write_disk(tf <- tempfile(fileext = file_ext)))
+  GET(url, write_disk(tf <- tempfile(fileext = get_file_ext(url))))
   
   df <- read_excel(tf, skip = 7) 
   
@@ -398,8 +400,7 @@ read_peri_2004 <- function(url){
 
 ```{r}
 read_ses_sa_2008 <- function(url){
-  file_ext <- str_extract(url, "[0-9a-z]+$")
-  GET(url, write_disk(tf <- tempfile(fileext = file_ext)))
+  GET(url, write_disk(tf <- tempfile(fileext = get_file_ext(url))))
   
   df <- read_excel(tf, skip = 5) 
   
