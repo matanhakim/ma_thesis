@@ -129,11 +129,12 @@ This function is important because some SELA data is using population data older
 This function takes the url of the file, the wanted column numbers for the cities and for the regional councils.
 It returns a tibble with a municipality id and the wanted variable values.
 ```{r}
-read_muni_old <- function(url, col_num_1, col_num_2){
-  GET(url, write_disk(tf <- tempfile(fileext = get_file_ext(url))))  
+read_muni_old <- function(path, col_num_1, col_num_2, is_online = FALSE) {
+  if(is_online)
+    GET(path, write_disk(path <- tempfile(fileext = get_file_ext(path))))  
   
-  df1 <- read_excel(tf, sheet = 2, skip = 1)
-  df2 <- read_excel(tf, sheet = 4, skip = 1)
+  df1 <- read_excel(path, sheet = 2, skip = 1)
+  df2 <- read_excel(path, sheet = 4, skip = 1)
   
   df1 <- df1 %>% 
     select(
