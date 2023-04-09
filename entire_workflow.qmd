@@ -35,6 +35,17 @@ get_file_ext <- function(string) {
 }
 ```
 
+This function reads an Excel file from a url online.
+It receives a url and other arguments used by `read_excel()`, and returns the tibble after being read.
+
+```{r}
+read_excel_url <- function(url, ...) {
+  GET(url, write_disk(tf <- tempfile(fileext = get_file_ext(url))))
+  read_excel(tf, ...)
+}
+```
+
+
 This function helps to fix column names of Excel tables, mainly of the form of those found in Israeli CBS municipality data.
 It does so by fixing a single row of to-be column names.
 It receives a data frame, an integer number representing a single row considered as holding (some of the) variable names, and a logical length-one vector specifying whether to fill missing values with preceding values or not.
