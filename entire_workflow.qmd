@@ -13,15 +13,23 @@ editor_options:
 
 # Setup
 
-# Load libraries
+## Load libraries
 
 ```{r}
+library(conflicted)
 library(tidyverse)
 library(readxl)
-# library(httr)
+library(httr)
 # library(rvest)
 # locale("he")
 ```
+## Library conflicts
+```{r}
+conflicts_prefer(dplyr::filter())
+conflicts_prefer(dplyr::lag())
+```
+
+
 
 # Utility functions
 
@@ -140,28 +148,31 @@ This function is important because some SELA data is using population data older
 This function takes the url of the file, the wanted column numbers for the cities and for the regional councils.
 It returns a tibble with a municipality id and the wanted variable values.
 ```{r}
-read_muni_old <- function(path, col_num_1, col_num_2, is_online = FALSE) {
+read_muni_old_var <- function(path, var_name, col_num_1, col_num_2, is_online = FALSE) {
   if(is_online)
     GET(path, write_disk(path <- tempfile(fileext = get_file_ext(path))))  
   
   df1 <- read_excel(path, sheet = 2, skip = 1)
   df2 <- read_excel(path, sheet = 4, skip = 1)
   
-  df1 <- df1 %>% 
+  df1 <- df1 |> 
     select(
       muni_id = 2,
-      var = col_num_1
-    ) %>% 
+      var = all_of(col_num_1)
+    ) |> 
     filter(str_length(muni_id) == 4)
   
-  df2 <- df2 %>% 
+  df2 <- df2 |> 
     select(
       muni_id = 2,
-      var = col_num_2
-    ) %>% 
+      var = all_of(col_num_1)
+    ) |> 
     filter(str_length(muni_id) == 2)
   
-  df <- bind_rows(df1, df2)
-  df
+  bind_rows(df1, df2) |> 
+    rename("{{ var_name }}" := var)
 }
+
+# df_2 <- read_muni_old_var("data_files/municipalities/2013.xls", mahoz, 3, 3)
+
 ```
