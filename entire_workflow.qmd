@@ -266,5 +266,44 @@ get_elect_pct <- function(){
     filter(!is.na(muni_id))
 }
 ```
+
+# Budget data
+
+This function reads SELA budget by the ministry of culture from the years 2016-2019.
+
+```{r}
+read_sela_budget <- function() {
+  
+  read_excel("data_files/budget/תמיכות המשרד לגופי תרבות 2016-2019.xlsx", sheet = 39) |> 
+    slice(-1) %>% 
+    select(
+      tax_id = 1,
+      # tax_name = 2,
+      init_2016 = 3,
+      fest_2016 = 4,
+      sela_2016 = 5,
+      init_2017 = 7,
+      fest_2017 = 8,
+      sela_2017 = 9,
+      init_2018 = 11,
+      fest_2018 = 12,
+      sela_2018 = 13,
+      init_2019 = 15,
+      fest_2019 = 16,
+      sela_2019 = 17
+    ) %>% 
+    pivot_longer(!tax_id, names_to = c("budget_type", "year"), names_sep = "_", values_to = "budget") %>% 
+    replace_na(list(budget = 0)) %>% 
+    mutate(
+      year = as.numeric(year)
+      ) %>% 
+    pivot_wider(names_from = "budget_type", names_prefix = "budget_approved_", values_from = "budget")
+}
 ```
+
+
+```{r}
+
+```
+
 
