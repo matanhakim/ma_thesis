@@ -26,7 +26,6 @@ library(httr)
 ## Library conflicts
 ```{r}
 conflicts_prefer(dplyr::filter())
-conflicts_prefer(dplyr::lag())
 ```
 
 
@@ -91,7 +90,7 @@ This function fixes column names of Excel tables, mainly of the form of those fo
 It receives a data frame, a vector with the row numbers considered as holding the variable names, and a logical vector specifying whether to fill missing values with preceding values or not.
 This last argument should be either of length 1, or of length of `row_num`.
 It is mostly used in the case of merged cells in Excel files.
-The function saves the new column names by iterating over every row, fixing the variable names, binding all names to a single tibble, uniting the different columns to a single column and pulling these values as a vector. The old rows containg these column names are filtered out, and the new merged and fixed names are set to the data frame, which is then returned.
+The function saves the new column names by iterating over every row, fixing the variable names, binding all names to a single tibble, uniting the different columns to a single column and pulling these values as a vector. The old rows containing these column names are filtered out, and the new merged and fixed names are set to the data frame, which is then returned.
 
 
 
@@ -141,6 +140,8 @@ read_muni_new <- function(path, is_online = FALSE) {
   read_excel(path, sheet = 2, skip = 5, col_names = col_names_merged)
 }
 
+df <- read_muni_new("data_files/municipalities/2018.xlsx")
+
 ```
 
 ## Import a single variable from a CBS municipalities file (2015 and before) with a single variable
@@ -176,3 +177,40 @@ read_muni_old_var <- function(path, var_name, col_num_1, col_num_2, is_online = 
 # df_2 <- read_muni_old_var("data_files/municipalities/2013.xls", mahoz, 3, 3)
 
 ```
+
+# Yishuvim
+
+This function reads a specific variable from the yishuvim data, alongside its yishuv id.
+
+```{r}
+read_yishuv <- function(var_name, col_num) {
+  yishuvim <- read_excel("data_files/yishuvim/bycode2021.xlsx", col_types = "text")
+  
+  yishuvim <- yishuvim %>% 
+    select(
+      yishuv_id = 2,
+      {{ var_name }} := all_of(col_num)
+    ) %>% 
+    mutate(
+      yishuv_id = str_pad(yishuv_id, width = 4, side = "left", pad = "0")
+    )
+  
+yishuvim
+}
+```
+
+This is a specific function that matches yishuv and municipality id.
+
+```{r}
+match_yishuv_muni <- function() {
+  
+  read_yishuv(muni_id, 9) |> 
+    mutate(
+      muni_id = case_when(
+        (muni_id == "0" | muni_id == "99") ~ yishuv_id,
+        TRUE ~ str_pad(muni_id, width = 2, side = "left", pad = "0")
+      )
+    )
+}
+```
+
