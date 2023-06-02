@@ -115,6 +115,12 @@ merge_names <- function(data, names_num = 2, fill_missing = TRUE) {
 }
 ```
 
+```{r}
+fix_yishuv_id <- function(yishuv_id) {
+  str_pad(yishuv_id, width = 4, side = "left", pad = "0")
+}
+```
+
 
 # Municipalities data
 
@@ -178,7 +184,7 @@ read_muni_old_var <- function(path, var_name, col_num_1, col_num_2, is_online = 
 
 ```
 
-# Yishuvim
+## Yishuvim
 
 This function reads a specific variable from the yishuvim data, alongside its yishuv id.
 
@@ -186,13 +192,13 @@ This function reads a specific variable from the yishuvim data, alongside its yi
 read_yishuv <- function(var_name, col_num) {
   yishuvim <- read_excel("data_files/yishuvim/bycode2021.xlsx", col_types = "text")
   
-  yishuvim <- yishuvim %>% 
+  yishuvim <- yishuvim |> 
     select(
       yishuv_id = 2,
       {{ var_name }} := all_of(col_num)
-    ) %>% 
+    ) |> 
     mutate(
-      yishuv_id = str_pad(yishuv_id, width = 4, side = "left", pad = "0")
+      yishuv_id = fix_yishuv_id(yishuv_id)
     )
   
 yishuvim
@@ -212,5 +218,53 @@ match_yishuv_muni <- function() {
       )
     )
 }
+```
+
+## Elections data
+
+This function reads the raw 2015 elections data file and adds a municipality id for every yishuv.
+
+```{r}
+read_elect_muni <- function() {
+  read_excel("data_files/elections/results_20.xls") |> 
+    rename(yishuv_id = 2) |> 
+    mutate(yishuv_id = fix_yishuv_id(yishuv_id)) |> 
+    left_join(match_yishuv_muni(), join_by(yishuv_id))
+}
+```
+
+This function computes voting percentages for Likud and coalition parties in every municipality. It filters out NA values (like Beduin tribes). In 2015, there were no voting in Ein Kinya.
+
+```{r}
+get_elect_pct <- function(){
+  
+  read_elect_muni() |>  
+    rename(
+      pot_votes = 4,
+      good_votes = 7,
+      yahadut_hatorah = 9,
+      habait_hayehudi = 14,
+      kulanu = 19,
+      israel_beytenu = 20,
+      halikud = 21,
+      shas = 33
+    ) |> 
+    group_by(muni_id) |> 
+    summarize(
+      likud_pct = 100 * sum(halikud) / sum(good_votes),
+      coal_pct = 100 * sum(
+        yahadut_hatorah +
+        habait_hayehudi +
+        kulanu +
+        israel_beytenu +
+        halikud +
+        shas
+      ) / sum(good_votes),
+      pot_votes = sum(pot_votes),
+      good_votes = sum(good_votes)
+    ) |> 
+    filter(!is.na(muni_id))
+}
+```
 ```
 
