@@ -251,6 +251,18 @@ match_yishuv_muni <- function() {
 }
 ```
 
+This function reads all possible names for yishuvim and their CBS yishuv id.
+
+```{r}
+read_yishuv_names <- function() {
+  read_csv(
+    "https://raw.githubusercontent.com/matanhakim/general_files/main/yishuv_names.csv",
+    col_types = cols(.default = "c")
+  )
+}
+```
+
+
 ## 2013 CBS SES data
 
 This function reads the 2013 CBS SES data for municipalities that is being used by 2018 SELA regulations to determine eligibility of municipalities.
@@ -483,29 +495,6 @@ read_organizations_bad_names <- function() {
 ## Match yishuv id to organizations
 
 ```{r}
-df_muni_names <- read_muni_id(include_names = TRUE) |> 
-  select(!c(edu_id, tax_id)) |> 
-  pivot_longer(!cbs_id, names_to = "var", values_to = "yishuv_name") |> 
-  rename(yishuv_id = cbs_id) |>
-  select(!var) |> 
-  distinct(yishuv_name, .keep_all = TRUE)
-
-df_yishuvim_names <- read_yishuv(yishuv_name, 1) |> 
-  left_join(read_yishuv(yishuv_name_eng_1, 25), join_by(yishuv_id)) |> 
-  mutate(
-    yishuv_name_eng_2 = str_to_lower(yishuv_name_eng_1),
-    yishuv_name_eng_3 = str_to_upper(yishuv_name_eng_1),
-    yishuv_name_eng_4 = str_to_sentence(yishuv_name_eng_1),
-    yishuv_name_eng_5 = str_to_title(yishuv_name_eng_1)
-  ) |> 
-  pivot_longer(!yishuv_id, names_to = "name", values_to = "yishuv_name") |> 
-  select(!name) |> 
-  bind_rows(df_muni_names) |> 
-  distinct(yishuv_name, .keep_all = TRUE)
-  
-```
-
-```{r}
 read_organizations <- function() {
   bind_rows(
     read_amutot(),
@@ -515,7 +504,7 @@ read_organizations <- function() {
   ) |> 
     arrange(tax_id, yishuv_name) |> 
     distinct(tax_id, .keep_all = TRUE) |> 
-    left_join(df_yishuvim_names, join_by(yishuv_name))
+    left_join(read_yishuv_names(), join_by(yishuv_name))
 }
 ```
 
@@ -597,55 +586,6 @@ df_bad_names <- df_culture |>
   distinct(yishuv_name, .keep_all = TRUE)
 ```
 
-This adds the missing yishuvim names to the relevant data frame.
-
-```{r}
-df_yishuvim_names_2 <- tibble(
-  yishuv_name = c(
-    "תל אביב - יפו",
-    "דנ גליל עליון",
-    "מעין ברוך", 
-    "בנימינה",
-    "דנ חפר",
-    "מא יואב",
-    "עופרה",
-    "פרדס-חנה כרכור",
-    "מא רמת הנגב דנ חלוצה", 
-    "מגד אל-כרום",
-    "חברון", 
-    "מועצה אזורית אשכול",
-    "אז\"ת שער בנימין",
-    "מג'ד אל כרום",
-    "ריחאניה",
-    "צמח",
-    "נתב\"ג",
-    "מא רמת הנגב"
-  ),
-  yishuv_id = c(
-    "5000",
-    "01",
-    "0416",
-    "9800",
-    "16",
-    "35",
-    "3617",
-    "7800",
-    "48",
-    "0516",
-    "1983",
-    "38",
-    "73",
-    "0516",
-    "0540",
-    "1711",
-    "1748",
-    "48"
-  )
-)
-
-df_yishuvim_names <- df_yishuvim_names |> 
-  bind_rows(df_yishuvim_names_2)
-```
 
 This function matches every organization supported by the ministry of culture with its municiaplity id. this leaves us with a municipality id for every budget support of the ministry of culture for every organization in every year. missing values include yishuvim not part of any municipality, like Mikveh Israel and the airport, and budgets that do not go to organiztions, mostly prizes for indivduals.
 
