@@ -587,7 +587,7 @@ df_bad_names <- df_culture |>
 ```
 
 
-This function matches every organization supported by the ministry of culture with its municiaplity id. this leaves us with a municipality id for every budget support of the ministry of culture for every organization in every year. missing values include yishuvim not part of any municipality, like Mikveh Israel and the airport, and budgets that do not go to organiztions, mostly prizes for indivduals.
+This function matches every organization supported by the ministry of culture with its municipality id. this leaves us with a municipality id for every budget support of the ministry of culture for every organization in every year. missing values include yishuvim not part of any municipality, like Mikveh Israel and the airport, and budgets that do not go to organiztions, mostly prizes for individuals.
 
 ```{r}
 add_culture_budget_muni_id <- function() {
