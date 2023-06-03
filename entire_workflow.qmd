@@ -269,7 +269,7 @@ This function reads the 2013 CBS SES data for municipalities that is being used 
 It reads the file, selects the relevant variables, removes excess rows, and transforms the id to the usual format.
 
 ```{r}
-read_ses_2013 <- function(url){
+read_ses_2013 <- function(url) {
   
   read_excel("data/municipalities/t02.xls", skip = 6) |> 
     slice(2:256) |>
@@ -331,7 +331,7 @@ read_elect_muni <- function() {
 This function computes voting percentages for Likud and coalition parties in every municipality. It filters out NA values (like Beduin tribes). In 2015, there were no voting in Ein Kinya.
 
 ```{r}
-get_elect_pct <- function(){
+get_elect_pct <- function() {
   
   read_elect_muni() |>  
     rename(
@@ -368,7 +368,7 @@ get_elect_pct <- function(){
 
 This function reads every registered amuta from guidestar and returns its organiztion (tax) id and the name of its registered yishuv
 ```{r}
-read_amutot <- function(){
+read_amutot <- function() {
   
   df_amutot_new <- read_excel("data/organizations/דוח חודשי גיידסטאר.xlsx", sheet = 2) |> 
     select(
@@ -402,7 +402,7 @@ read_amutot <- function(){
 ## Companies
 
 ```{r}
-read_companies <- function(){
+read_companies <- function() {
   read_csv("data/organizations/companies.csv") |> 
     select(
       tax_id = 1,
