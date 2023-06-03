@@ -124,7 +124,7 @@ fix_yishuv_id <- function(yishuv_id) {
 ```{r}
 clean_yishuv_name <- function(yishuv_name) {
   yishuv_name |> 
-    str_remove_all("[[:punct:][:symbol:]&&[^'-()\"]]") |> 
+    str_remove_all("[[:punct:][:symbol:][:digit:]&&[^'\\-()\"]]") |> 
     str_squish()
 }
 ```
