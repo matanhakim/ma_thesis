@@ -358,14 +358,32 @@ This function reads every registered amuta from guidestar and returns its organi
 ```{r}
 read_amutot <- function(){
   
-  read_excel("data/organizations/דוח חודשי גיידסטאר.xlsx", sheet = 2) |> 
+  df_amutot_new <- read_excel("data/organizations/דוח חודשי גיידסטאר.xlsx", sheet = 2) |> 
     select(
       tax_id = 2,
       yishuv_name = 14
     ) |> 
     mutate(
+      tax_id = as.character(tax_id),
       yishuv_name = clean_yishuv_name(yishuv_name)
     )
+  
+  df_amutot_old <- read_excel("data/organizations/דוח גיידסטאר - אוגוסט 2020.xlsx") |> 
+    select(
+      tax_id = 2,
+      yishuv_name = 28
+    ) |> 
+    mutate(
+      tax_id = as.character(tax_id),
+      yishuv_name = clean_yishuv_name(yishuv_name)
+    )
+  
+  bind_rows(
+    df_amutot_new,
+    df_amutot_old
+  ) |> 
+    arrange(tax_id, yishuv_name) |> 
+    distinct(tax_id, .keep_all = TRUE)
 }
 ```
 
@@ -380,10 +398,87 @@ read_companies <- function(){
     ) |> 
     filter(!is.na(yishuv_name)) |> 
     mutate(
+      tax_id = as.character(tax_id),
       yishuv_name = clean_yishuv_name(yishuv_name)
     )
 }
 ```
+
+## Municipalities
+
+```{r}
+read_muni_names <- function() {
+  read_muni_id(include_names = TRUE) |> 
+    select(!c(edu_id, cbs_id)) |> 
+    pivot_longer(!tax_id, names_to = "var", values_to = "yishuv_name") |> 
+    select(!var) |> 
+    distinct(yishuv_name, .keep_all = TRUE)
+}
+```
+
+
+## Organiztions with no record
+```{r}
+read_organizations_bad_names <- function() {
+  tibble(
+    tax_id = c(
+      "589931187", # אוניברסיטת תל אביב
+      "500701628", # אוניברסיטת חיפה
+      "580303808", # תזמורת יד חריף (צרעה)
+      "580503605", # תזמורת נתיה הקאמרית הקיבוצית
+      "510101819", # חברת נכון בע"מ (חיפה) 
+      "589120880", # המרכז לאמנות יהודית רוסית (תל אביב)
+      "511854788", # מתנס רמת נגב
+      "512103383", # תאטרון ענתות (ראשון לציון)
+      "510021298", # סול בעמ ( לא ידוע)
+      "501501183", # ועדה מוניציפאלית חברון
+      "510318652", # מקיצי נרדמים בעמ ( תל אביב)
+      "510550767", # לאובק חיפה
+      "500217229", # מגדל תפן
+      "580409449", # עמותת יוצאי טורקיה בישראל (יהוד-מונוסון)
+      "510356777", # המכון לתרגום ספרות עברית (תל אביב)
+      "580270858", # פורום עולים ידידות (חולון)
+      "510497464", # התאטרון הפתוח בעמ (תל אביב)
+      "580374270", # אמנות המשחק לתיאטרון ולקולנוע
+      "580070845", # מרכז זלמן שזר (ירושלים)
+      "580510097", # להקת המחול מוריה קונג (תל אביב)
+      "580520229", # אקס טריטוריה (תל אביב)
+      "580114965", # כת עת אל-שרק (שפרעם)
+      "580373777", # אנסמבל תיאטרון הרצליה
+      "500500962", # יד יצחק בן-צבי (ירושלים)
+      "580302909" # תאיר - מרכז לתרבות יהודית (תל אביב)
+    ),
+    yishuv_name = c(
+      "תל אביב - יפו",
+      "חיפה",
+      "צרעה",
+      "נתניה",
+      "חיפה",
+      "תל אביב - יפו",
+      "רמת נגב",
+      "ראשון לציון",
+      NA,
+      "חברון",
+      "תל אביב - יפו",
+      "חיפה",
+      "מגדל תפן",
+      "יהוד-מונוסון",
+      "תל אביב - יפו",
+      "חולון",
+      "תל אביב - יפו",
+      "תל אביב - יפו",
+      "ירושלים",
+      "תל אביב - יפו",
+      "תל אביב - יפו",
+      "שפרעם",
+      "הרצליה",
+      "ירושלים",
+      "תל אביב - יפו"
+    )
+  )
+}
+```
+
 
 ## Match yishuv id to organizations
 
@@ -411,12 +506,17 @@ df_yishuvim_names <- read_yishuv(yishuv_name, 1) |>
 ```
 
 ```{r}
-df_orgs <- bind_rows(
-  read_amutot(),
-  read_companies()
-) |> 
-  arrange(tax_id, yishuv_name) |> 
-  distinct(tax_id, .keep_all = TRUE)
+read_organizations <- function() {
+  bind_rows(
+    read_amutot(),
+    read_companies(),
+    read_muni_names(),
+    read_organizations_bad_names()
+  ) |> 
+    arrange(tax_id, yishuv_name) |> 
+    distinct(tax_id, .keep_all = TRUE) |> 
+    left_join(df_yishuvim_names, join_by(yishuv_name))
+}
 ```
 
 
@@ -482,5 +582,67 @@ read_culture_budget <- function() {
       budget_paid_culture = sum(budget_paid_culture)
     )
 }
+```
+
+```{r}
+df_culture <- read_culture_budget() |> 
+  left_join(read_organizations(), join_by(tax_id))
+
+df_bad_names <- df_culture |> filter(is.na(yishuv_id)) |>  distinct(yishuv_name, .keep_all = TRUE)
+```
+
+```{r}
+df_yishuvim_names_2 <- tibble(
+  yishuv_name = c(
+    "תל אביב - יפו",
+    "דנ גליל עליון",
+    "מעין ברוך", 
+    "בנימינה",
+    "דנ חפר",
+    "מא יואב",
+    "עופרה",
+    "פרדס-חנה כרכור",
+    "מא רמת הנגב דנ חלוצה", 
+    "מגד אל-כרום",
+    "חברון", 
+    "מועצה אזורית אשכול",
+    "אז\"ת שער בנימין",
+    "מג'ד אל כרום",
+    "ריחאניה",
+    "צמח",
+    "נתב\"ג",
+    "מא רמת הנגב"
+  ),
+  yishuv_id = c(
+    "5000",
+    "01",
+    "0416",
+    "9800",
+    "16",
+    "35",
+    "3617",
+    "7800",
+    "48",
+    "0516",
+    "1983",
+    "38",
+    "73",
+    "0516",
+    "0540",
+    "1711",
+    "1748",
+    "48"
+  )
+)
+
+df_yishuvim_names <- df_yishuvim_names |> 
+  bind_rows(df_yishuvim_names_2)
+```
+
+```{r}
+df_culture <- read_culture_budget() |> 
+  left_join(read_organizations(), join_by(tax_id))
+
+df_bad_names <- df_culture |> filter(is.na(yishuv_id))
 ```
 
