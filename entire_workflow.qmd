@@ -563,6 +563,8 @@ read_sela_budget <- function() {
 
 ## Culture (total)
 
+This function reads the raw data from the Open Budget website of the ministry of culture, and summarizes it by year and organization.
+
 ```{r}
 read_culture_budget <- function() {
   read_csv("data/budget/מינהל התרבות__ פירוט כל התמיכות מתקציב זה שאושרו ב כל השנים.csv") |> 
@@ -584,12 +586,18 @@ read_culture_budget <- function() {
 }
 ```
 
+This chunk checks which organizations that got budget from the ministry of culture do not appear in the current organizations data.
+
 ```{r}
 df_culture <- read_culture_budget() |> 
   left_join(read_organizations(), join_by(tax_id))
 
-df_bad_names <- df_culture |> filter(is.na(yishuv_id)) |>  distinct(yishuv_name, .keep_all = TRUE)
+df_bad_names <- df_culture |> 
+  filter(is.na(yishuv_id)) |> 
+  distinct(yishuv_name, .keep_all = TRUE)
 ```
+
+This adds the missing yishuvim names to the relevant data frame.
 
 ```{r}
 df_yishuvim_names_2 <- tibble(
@@ -639,10 +647,19 @@ df_yishuvim_names <- df_yishuvim_names |>
   bind_rows(df_yishuvim_names_2)
 ```
 
-```{r}
-df_culture <- read_culture_budget() |> 
-  left_join(read_organizations(), join_by(tax_id))
+This function matches every organization supported by the ministry of culture with its municiaplity id. this leaves us with a municipality id for every budget support of the ministry of culture for every organization in every year. missing values include yishuvim not part of any municipality, like Mikveh Israel and the airport, and budgets that do not go to organiztions, mostly prizes for indivduals.
 
-df_bad_names <- df_culture |> filter(is.na(yishuv_id))
+```{r}
+add_culture_budget_muni_id <- function() {
+  df_culture <- read_culture_budget() |> 
+    left_join(read_organizations(), join_by(tax_id)) |> 
+    left_join(match_yishuv_muni(), join_by(yishuv_id)) |> 
+    mutate(
+      muni_id = case_when(
+        !is.na(muni_id) ~ muni_id,
+        str_length(yishuv_id) == 2 ~ yishuv_id
+      )
+    )
+}
 ```
 
