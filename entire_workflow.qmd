@@ -121,6 +121,14 @@ fix_yishuv_id <- function(yishuv_id) {
 }
 ```
 
+```{r}
+clean_yishuv_name <- function(yishuv_name) {
+  yishuv_name |> 
+    str_remove_all("[[:punct:][:symbol:]&&[^'-()\"]]") |> 
+    str_squish()
+}
+```
+
 
 # Municipalities data
 
@@ -406,3 +414,37 @@ read_culture_budget <- function() {
 }
 ```
 
+# Organizations data
+
+## Amutot
+
+This function reads every registered amuta from guidestar and returns its organiztion (tax) id and the name of its registered yishuv
+```{r}
+read_amutot <- function(){
+  
+  read_excel("data_files/organizations/דוח חודשי גיידסטאר.xlsx", sheet = 2) |> 
+    select(
+      tax_id = 2,
+      yishuv_name = 14
+    ) |> 
+    mutate(
+      yishuv_name = clean_yishuv_name(yishuv_name)
+    )
+}
+```
+
+## Companies
+
+```{r}
+read_companies <- function(){
+  read_csv("data_files/organizations/companies.csv") |> 
+    select(
+      tax_id = 1,
+      yishuv_name = 13
+    ) |> 
+    filter(!is.na(yishuv_name)) |> 
+    mutate(
+      yishuv_name = clean_yishuv_name(yishuv_name)
+    )
+}
+```
