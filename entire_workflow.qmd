@@ -662,4 +662,16 @@ add_culture_budget_muni_id <- function() {
     )
 }
 ```
+This function summarizes the cultural budget data by municipality and year.
+
+```{r}
+culture_budget_by_muni <- function() {
+  add_culture_budget_muni_id() |> 
+    summarise(
+      .by = c(year, muni_id),
+      budget_approved_culture = sum(budget_approved_culture),
+      budget_paid_culture = sum(budget_paid_culture)
+    )
+}
+```
 
