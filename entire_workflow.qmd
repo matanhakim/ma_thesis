@@ -183,6 +183,28 @@ read_muni_old_var <- function(path, var_name, col_num_1, col_num_2, is_online = 
 # df_2 <- read_muni_old_var("data_files/municipalities/2013.xls", mahoz, 3, 3)
 
 ```
+# Municipality id
+
+Every municipality has different ids for different authorities. This function reads the requested ids and includes their names if requested.
+
+```{r}
+read_muni_id <- function(id_types = c("cbs", "edu", "tax"), include_names = FALSE) {
+
+  data <- read_csv("https://raw.githubusercontent.com/matanhakim/general_files/main/muni_ids.csv", col_types = cols(.default = "c"))
+    
+  if (include_names)
+  {
+    data |> 
+      select(contains(id_types))
+  }
+  else
+  {
+    data |> 
+      select(contains(id_types) & ends_with("id"))
+  }
+}
+```
+
 
 ## Yishuvim
 
@@ -220,7 +242,7 @@ match_yishuv_muni <- function() {
 }
 ```
 
-## Elections data
+# Elections data
 
 This function reads the raw 2015 elections data file and adds a municipality id for every yishuv.
 
@@ -301,9 +323,5 @@ read_sela_budget <- function() {
 }
 ```
 
-
-```{r}
-
-```
 
 
