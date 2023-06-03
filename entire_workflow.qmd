@@ -183,7 +183,8 @@ read_muni_old_var <- function(path, var_name, col_num_1, col_num_2, is_online = 
 # df_2 <- read_muni_old_var("data_files/municipalities/2013.xls", mahoz, 3, 3)
 
 ```
-# Municipality id
+
+## Municipality id
 
 Every municipality has different ids for different authorities. This function reads the requested ids and includes their names if requested.
 
@@ -237,6 +238,58 @@ match_yishuv_muni <- function() {
       muni_id = case_when(
         (muni_id == "0" | muni_id == "99") ~ yishuv_id,
         TRUE ~ str_pad(muni_id, width = 2, side = "left", pad = "0")
+      )
+    )
+}
+```
+
+## 2013 CBS SES data
+
+This function reads the 2013 CBS SES data for municipalities that is being used by 2018 SELA regulations to determine eligibility of municipalities.
+It reads the file, selects the relevant variables, removes excess rows, and transforms the id to the usual format.
+
+```{r}
+read_ses_2013 <- function(url){
+  
+  read_excel("data_files/municipalities/t02.xls", skip = 6) |> 
+    slice(2:256) |>
+    select(
+      muni_status = 1,
+      muni_id = 2,
+      ses_2013_i = 5,
+      ses_2013_r = 6,
+      ses_2013_c = 7
+    ) |> 
+    mutate(
+      muni_id = as.character(muni_id),
+      muni_id = case_when(
+        (muni_status == "0" | muni_status == "99") ~ str_pad(muni_id, width = 4, side = "left", pad = "0"),
+        TRUE ~ str_pad(muni_status, width = 2, side = "left", pad = "0")
+      )
+    ) |> 
+    select(!muni_status)
+}
+```
+
+## 2004 CBS periphery data
+
+Important to note that this is and old indicator, therefore since then some municipal jurisdiction changes have happened:
+
+```{r}
+read_peri_2004 <- function() {
+  
+  read_excel("data_files/municipalities/24_08_160t2.xls", skip = 7) |> 
+    select(
+      muni_id = 1,
+      peri_2004_i = 9,
+      peri_2004_r = 10,
+      peri_2004_c = 11
+    ) |> 
+    mutate(
+      muni_id = as.character(muni_id),
+      muni_id = case_when(
+        str_length(muni_id) == 5 ~ str_sub(muni_id, start = -2),
+        TRUE ~ str_pad(muni_id, width = 4, side = "left", pad = "0")
       )
     )
 }
