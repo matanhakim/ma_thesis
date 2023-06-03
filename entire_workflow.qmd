@@ -350,6 +350,76 @@ get_elect_pct <- function(){
 }
 ```
 
+# Organizations data
+
+## Amutot
+
+This function reads every registered amuta from guidestar and returns its organiztion (tax) id and the name of its registered yishuv
+```{r}
+read_amutot <- function(){
+  
+  read_excel("data/organizations/דוח חודשי גיידסטאר.xlsx", sheet = 2) |> 
+    select(
+      tax_id = 2,
+      yishuv_name = 14
+    ) |> 
+    mutate(
+      yishuv_name = clean_yishuv_name(yishuv_name)
+    )
+}
+```
+
+## Companies
+
+```{r}
+read_companies <- function(){
+  read_csv("data/organizations/companies.csv") |> 
+    select(
+      tax_id = 1,
+      yishuv_name = 13
+    ) |> 
+    filter(!is.na(yishuv_name)) |> 
+    mutate(
+      yishuv_name = clean_yishuv_name(yishuv_name)
+    )
+}
+```
+
+## Match yishuv id to organizations
+
+```{r}
+df_muni_names <- read_muni_id(include_names = TRUE) |> 
+  select(!c(edu_id, tax_id)) |> 
+  pivot_longer(!cbs_id, names_to = "var", values_to = "yishuv_name") |> 
+  rename(yishuv_id = cbs_id) |>
+  select(!var) |> 
+  distinct(yishuv_name, .keep_all = TRUE)
+
+df_yishuvim_names <- read_yishuv(yishuv_name, 1) |> 
+  left_join(read_yishuv(yishuv_name_eng_1, 25), join_by(yishuv_id)) |> 
+  mutate(
+    yishuv_name_eng_2 = str_to_lower(yishuv_name_eng_1),
+    yishuv_name_eng_3 = str_to_upper(yishuv_name_eng_1),
+    yishuv_name_eng_4 = str_to_sentence(yishuv_name_eng_1),
+    yishuv_name_eng_5 = str_to_title(yishuv_name_eng_1)
+  ) |> 
+  pivot_longer(!yishuv_id, names_to = "name", values_to = "yishuv_name") |> 
+  select(!name) |> 
+  bind_rows(df_muni_names) |> 
+  distinct(yishuv_name, .keep_all = TRUE)
+  
+```
+
+```{r}
+df_orgs <- bind_rows(
+  read_amutot(),
+  read_companies()
+) |> 
+  arrange(tax_id, yishuv_name) |> 
+  distinct(tax_id, .keep_all = TRUE)
+```
+
+
 # Budget data
 
 ## Sela
@@ -414,37 +484,3 @@ read_culture_budget <- function() {
 }
 ```
 
-# Organizations data
-
-## Amutot
-
-This function reads every registered amuta from guidestar and returns its organiztion (tax) id and the name of its registered yishuv
-```{r}
-read_amutot <- function(){
-  
-  read_excel("data/organizations/דוח חודשי גיידסטאר.xlsx", sheet = 2) |> 
-    select(
-      tax_id = 2,
-      yishuv_name = 14
-    ) |> 
-    mutate(
-      yishuv_name = clean_yishuv_name(yishuv_name)
-    )
-}
-```
-
-## Companies
-
-```{r}
-read_companies <- function(){
-  read_csv("data/organizations/companies.csv") |> 
-    select(
-      tax_id = 1,
-      yishuv_name = 13
-    ) |> 
-    filter(!is.na(yishuv_name)) |> 
-    mutate(
-      yishuv_name = clean_yishuv_name(yishuv_name)
-    )
-}
-```
