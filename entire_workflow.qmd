@@ -291,13 +291,15 @@ get_elect_pct <- function(){
 
 # Budget data
 
+## Sela
+
 This function reads SELA budget by the ministry of culture from the years 2016-2019.
 
 ```{r}
 read_sela_budget <- function() {
   
   read_excel("data_files/budget/תמיכות המשרד לגופי תרבות 2016-2019.xlsx", sheet = 39) |> 
-    slice(-1) %>% 
+    slice(-1) |> 
     select(
       tax_id = 1,
       # tax_name = 2,
@@ -313,15 +315,41 @@ read_sela_budget <- function() {
       init_2019 = 15,
       fest_2019 = 16,
       sela_2019 = 17
-    ) %>% 
-    pivot_longer(!tax_id, names_to = c("budget_type", "year"), names_sep = "_", values_to = "budget") %>% 
-    replace_na(list(budget = 0)) %>% 
+    ) |> 
+    pivot_longer(!tax_id, names_to = c("budget_type", "year"), names_sep = "_", values_to = "budget") |> 
+    replace_na(list(budget = 0)) |> 
     mutate(
       year = as.numeric(year)
-      ) %>% 
-    pivot_wider(names_from = "budget_type", names_prefix = "budget_approved_", values_from = "budget")
+      ) |> 
+    pivot_wider(names_from = "budget_type", names_prefix = "budget_approved_", values_from = "budget") |> 
+    left_join(read_muni_id(c("tax", "cbs")), join_by(tax_id)) |> 
+    select(
+      muni_id = cbs_id,
+      !tax_id
+    )
 }
 ```
 
+## Culture (total)
 
+```{r}
+read_culture_budget <- function() {
+  read_csv("data_files/budget/מינהל התרבות__ פירוט כל התמיכות מתקציב זה שאושרו ב כל השנים.csv") |> 
+    select(
+      tax_id = 6,
+      year = 7,
+      budget_approved_culture = 8,
+      budget_paid_culture = 9
+    ) |> 
+    replace_na(
+      list(budget_approved_culture = 0, budget_paid_culture = 0)
+    ) |> 
+    mutate(tax_id = as.character(tax_id)) |> 
+    summarise(
+      .by = c(tax_id, year),
+      budget_approved_culture = sum(budget_approved_culture),
+      budget_paid_culture = sum(budget_paid_culture)
+    )
+}
+```
 
