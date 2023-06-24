@@ -154,41 +154,54 @@ read_muni_new <- function(path, is_online = FALSE) {
   read_excel(path, sheet = 2, skip = 5, col_names = col_names_merged)
 }
 
-df <- read_muni_new("data/municipalities/2018.xlsx")
+df_2018 <- read_muni_new("data/municipalities/2018.xlsx")
 
 ```
+
+## Import a single variable from a CBS municipalities file (2016 and later) with a single variable
+
+```{r}
+read_muni_new_var <- function(path, var_name, col_num, is_online = FALSE) {
+  if(is_online)
+    GET(path, write_disk(path <- tempfile(fileext = get_file_ext(path))))  
+  
+  read_excel(path, sheet = 2, skip = 5, col_names = FALSE) |> 
+  select(
+    muni_id = 2,
+    "{var_name}" := all_of(col_num)
+  )
+}
+```
+
 
 ## Import a single variable from a CBS municipalities file (2015 and before) with a single variable
 This function is important because some SELA data is using population data older than 2018.
 This function takes the url of the file, the wanted column numbers for the cities and for the regional councils.
 It returns a tibble with a municipality id and the wanted variable values.
 ```{r}
-read_muni_old_var <- function(path, var_name, col_num_1, col_num_2, is_online = FALSE) {
+read_muni_old_var <- function(path, var_name, col_num_1, col_num_2, skip_rows = 1, is_online = FALSE) {
   if(is_online)
     GET(path, write_disk(path <- tempfile(fileext = get_file_ext(path))))  
   
-  df1 <- read_excel(path, sheet = 2, skip = 1)
-  df2 <- read_excel(path, sheet = 4, skip = 1)
+  df1 <- read_excel(path, sheet = 2, skip = skip_rows)
+  df2 <- read_excel(path, sheet = 4, skip = skip_rows)
   
   df1 <- df1 |> 
     select(
       muni_id = 2,
-      var = all_of(col_num_1)
+      "{var_name}" := all_of(col_num_1)
     ) |> 
     filter(str_length(muni_id) == 4)
   
   df2 <- df2 |> 
     select(
       muni_id = 2,
-      var = all_of(col_num_1)
+      "{var_name}" := all_of(col_num_2)
     ) |> 
     filter(str_length(muni_id) == 2)
   
-  bind_rows(df1, df2) |> 
-    rename("{{ var_name }}" := var)
+  bind_rows(df1, df2) 
 }
-
-# df_2 <- read_muni_old_var("data/municipalities/2013.xls", mahoz, 3, 3)
 
 ```
 
@@ -602,6 +615,7 @@ add_culture_budget_muni_id <- function() {
     )
 }
 ```
+
 This function summarizes the cultural budget data by municipality and year.
 
 ```{r}
@@ -613,5 +627,52 @@ culture_budget_by_muni <- function() {
       budget_paid_culture = sum(budget_paid_culture)
     )
 }
+```
+
+# Create a complete data frame
+
+## Read population for every year
+
+```{r}
+df_pop_args_old <- tribble(
+  ~path, ~var_name, ~col_num_1, ~col_num_2, ~skip_rows, ~year,
+  "",    "pop",     15,          30,         0,         2013,
+  "",    "pop",     16,          33,         1,         2014,
+  "",    "pop",     14,          31,         1,         2015
+) |> 
+  mutate(
+    path = str_c("data/municipalities/", year, ".xls")
+  ) |> 
+  select(!year)
+
+df_pop_args_new <- tibble(
+      path = str_c("data/municipalities/", 2016:2019, ".xlsx"),
+      var_name = "pop",
+      col_num = 13
+    )
+df_pop <- bind_rows(
+  pmap(df_pop_args_old, read_muni_old_var),
+  pmap(df_pop_args_new, read_muni_new_var)
+) |> 
+  mutate(
+    year = rep(2013:2019, each = 255),
+    pop = if_else(pop < 1000, pop * 1000, pop)
+  )
+```
+
+
+```{r}
+df <- expand_grid(
+  year = 2013:2019,
+  read_muni_id(id_types = "cbs", include_names = TRUE)
+) |> 
+  rename(
+    muni_id = cbs_id,
+    muni_name = cbs_name
+  ) |> 
+  left_join(culture_budget_by_muni(), join_by(year, muni_id)) |> 
+  left_join(read_sela_budget(), join_by(year, muni_id)) |> 
+  mutate(across(contains("budget"), \(x) replace_na(x, 0))) |> 
+  left_join(df_pop, join_by(year, muni_id))
 ```
 
