@@ -660,6 +660,19 @@ df_pop <- bind_rows(
   )
 ```
 
+## Classify municipalities to sector (Jewish/Arab)
+
+```{r}
+df_sector <- read_muni_new_var("data/municipalities/2019.xlsx", "arab_pct", 16) |> 
+  mutate(
+    arab_pct = as.numeric(str_replace(arab_pct, "-", "0")),
+    sector = as_factor(if_else(arab_pct > 50, "arab", "jewish"))
+  ) |> 
+  select(!arab_pct)
+```
+
+
+## Combine all data frames
 
 ```{r}
 df <- expand_grid(
@@ -673,6 +686,7 @@ df <- expand_grid(
   left_join(culture_budget_by_muni(), join_by(year, muni_id)) |> 
   left_join(read_sela_budget(), join_by(year, muni_id)) |> 
   mutate(across(contains("budget"), \(x) replace_na(x, 0))) |> 
-  left_join(df_pop, join_by(year, muni_id))
+  left_join(df_pop, join_by(year, muni_id)) |> 
+  left_join(df_sector, join_by(muni_id))
 ```
 
