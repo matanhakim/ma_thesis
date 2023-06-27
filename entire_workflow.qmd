@@ -750,7 +750,8 @@ df_gini <- df |>
 df_gini |> 
   pivot_longer(!year, names_to = "statistic", values_to = "value") |> 
   ggplot(aes(year, value, color = statistic)) +
-  geom_line()
+  geom_line() +
+  geom_point()
   
 ```
 
