@@ -735,10 +735,10 @@ df_gini <- df |>
     .by = year,
     # gini_1 = acid::weighted.gini(budget_approved_culture_per_capita, w = pop)[[1]],
     # gini_2 = dineq::gini.wtd(budget_approved_culture_per_capita, weights = pop),
-    gini_3 = gini_weighted(budget_approved_culture_per_capita, weights = as.integer(pop)),
+    gini = gini_weighted(budget_approved_culture_per_capita, weights = as.integer(pop)),
     # top10_pct_1 = 1 - DescTools::Quantile(budget_approved_culture, weights = pop, probs = 0.9) / sum(budget_approved_culture * pop),
     # top10_pct_2 = 1 - reldist::wtd.quantile(budget_approved_culture, weight = pop, q = 0.9) / sum(budget_approved_culture * pop),
-    top10_pct_3 = top_prop(budget_approved_culture_per_capita, weights = as.integer(pop), top_prop = 0.1),
+    top10_pct = top_prop(budget_approved_culture_per_capita, weights = as.integer(pop), top_prop = 0.1),
     bot50_pct = 1 - top_prop(budget_approved_culture_per_capita, weights = as.integer(pop), top_prop = 0.5),
     mid50_90_pct = 1 - top10_pct_3 - bot50_pct
   )
