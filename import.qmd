@@ -421,7 +421,7 @@ read_ses_sa_2008 <- function(url){
 }
 ```
 
-get## National priority settlements decided by the Israeli government
+## National priority settlements decided by the Israeli government
 
 Since the SELA budget relies also on national priority areas, these data are needed to be imported.
 ### Getting the list of tables from the national priority webpage
