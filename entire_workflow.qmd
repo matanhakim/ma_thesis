@@ -20,6 +20,7 @@ library(conflicted)
 library(tidyverse)
 library(readxl)
 library(httr)
+library(rvest)
 library(reldist)
 # library(rvest)
 # locale("he")
@@ -235,18 +236,14 @@ This function reads a specific variable from the yishuvim data, alongside its yi
 
 ```{r}
 read_yishuv <- function(var_name, col_num) {
-  yishuvim <- read_excel("data/yishuvim/bycode2021.xlsx", col_types = "text")
-  
-  yishuvim <- yishuvim |> 
+  read_excel("data/yishuvim/bycode2021.xlsx", col_types = "text") |> 
     select(
       yishuv_id = 2,
-      {{ var_name }} := all_of(col_num)
+      "{var_name}" := all_of(col_num)
     ) |> 
     mutate(
       yishuv_id = fix_yishuv_id(yishuv_id)
     )
-  
-yishuvim
 }
 ```
 
@@ -255,7 +252,7 @@ This is a specific function that matches yishuv and municipality id.
 ```{r}
 match_yishuv_muni <- function() {
   
-  read_yishuv(muni_id, 9) |> 
+  read_yishuv("muni_id", 9) |> 
     mutate(
       muni_id = case_when(
         (muni_id == "0" | muni_id == "99") ~ yishuv_id,
@@ -630,6 +627,134 @@ culture_budget_by_muni <- function() {
 }
 ```
 
+# CBS cluster data
+
+
+## 2013 CBS SES data
+
+This function reads the 2013 CBS SES data for municipalities that is being used by 2018 SELA regulations to determine eligibility of municipalities.
+It reads the file, selects the relevant variables, removes excess rows, and transforms the id to the usual format.
+
+```{r}
+read_ses_2013 <- function() {
+  df <- read_excel("data/indices/t02.xls", skip = 6)
+  
+  df |> 
+    slice(2:256) |>
+    select(
+      muni_status = 1,
+      muni_id = 2,
+      ses_2013_i = 5,
+      ses_2013_r = 6,
+      ses_2013_c = 7
+    ) |> 
+    mutate(
+      muni_id = as.character(muni_id),
+      muni_id = case_when(
+        (muni_status == "0" | muni_status == "99") ~ fix_yishuv_id(muni_id),
+        TRUE ~ str_pad(muni_status, width = 2, side = "left", pad = "0")
+      )
+    ) |> 
+    select(!muni_status)
+   
+}
+```
+
+## 2004 CBS periphery data
+
+Important to note that this is and old indicator, therefore since then some municipal jurisdiction changes have happened:
+
+```{r}
+read_peri_2004 <- function() {
+  df <- read_excel("data/indices/24_08_160t2.xls", skip = 7) 
+  
+  df |> 
+    select(
+      muni_id = 1,
+      peri_2004_i = 9,
+      peri_2004_r = 10,
+      peri_2004_c = 11
+    ) |> 
+    mutate(
+      muni_id = as.character(muni_id),
+      muni_id = case_when(
+        str_length(muni_id) == 5 ~ str_sub(muni_id, start = -2),
+        TRUE ~ fix_yishuv_id(muni_id)
+      )
+    )
+}
+```
+
+## National priority settlements decided by the Israeli government
+
+Since the SELA budget relies also on national priority areas, these data are needed to be imported.
+
+### Getting the list of tables from the national priority webpage
+
+This function reads the table data in the national priority areas government decision webpage, and returns a list of those tables.
+
+```{r}
+get_nat_pri_list <- function(){
+  nat_pri_url <- "https://www.gov.il/he/departments/policies/2013_des667"
+  
+  read_html(nat_pri_url) |>
+    html_elements("table") |> 
+    html_table()
+}
+```
+
+### Merging national priority yishuvim, subdistricts (Nafot) and yishuvim close to the border
+This function reads the tables from the previous section and manipulates them:
+-   The nafot (subdistricts) data is added with the corresponding nafa_id column, and converts Hebrew data to logical.
+-   The yishuvim declared as national priority are cleaned, added with a TRUE column and formats the yishuv_id.
+-   The yishuvim declared as close to the border or threatened are cleaned, added with a TRUE column and formats the yishuv_id.
+-   The whole yishuvim list is being called from the CBS website, and then all other three data frames are joined. NA's are replaced with FALSE, and a final national priority variable for each yishuv is calculated.
+-   Finally, yishuvim with NA as municipality are filtered out, and a final national priority variable for each municipality is calculated as having either more than 75% of yishuvim in the municipality as national priority, or more than 50% of yishuvim in the municipality as close to the border or threatened.
+
+```{r}
+read_nat_pri_munis <- function(){
+  
+  pri_list <- get_nat_pri_list()
+  
+  pri_nafot <- pri_list[[1]] |> 
+    add_column(nafa_id = c(29,21,24,62,22,23,71,32,11,61,31,41,44,43,42,51)) |> 
+    mutate(
+      nafa_id = as.character(nafa_id),
+      nafa_nat_pri = (X7 == "כן")
+    ) |> 
+    select(nafa_id, nafa_nat_pri)
+  
+  pri_yishuvim <- pri_list[[2]] |> 
+    select(yishuv_id = 1) |> 
+    slice_tail(n = -1) |> 
+    add_column(yishuv_nat_pri = TRUE) |> 
+    mutate(yishuv_id = fix_yishuv_id(yishuv_id))
+  
+  pri_border <- pri_list[[3]] |> 
+    select(yishuv_id = 1) |> 
+    slice_tail(n = -1) |> 
+    add_column(border_nat_pri = TRUE) |> 
+    mutate(yishuv_id = fix_yishuv_id(yishuv_id))
+  
+  pri_df <- match_yishuv_muni() |> 
+    left_join(read_yishuv("nafa_id", 6), join_by(yishuv_id)) |> 
+    left_join(pri_nafot, by = "nafa_id") |> 
+    left_join(pri_yishuvim, by = "yishuv_id") |> 
+    left_join(pri_border, by = "yishuv_id") |> 
+    mutate(
+      across(ends_with("pri"), \(x) replace_na(x, FALSE)),
+      is_nat_pri = nafa_nat_pri | yishuv_nat_pri | border_nat_pri
+    )
+    
+  pri_df |> 
+  filter(!is.na(muni_id)) |> 
+  group_by(muni_id) |> 
+  summarise(is_nat_pri = (mean(is_nat_pri) > 0.75) | (mean(border_nat_pri) >= 0.5))
+    
+}
+```
+
+
 # Create a complete data frame
 
 ## Read population for every year
@@ -688,10 +813,13 @@ df <- expand_grid(
   left_join(read_sela_budget(), join_by(year, muni_id)) |> 
   mutate(across(contains("budget"), \(x) replace_na(x, 0))) |> 
   left_join(df_pop, join_by(year, muni_id)) |> 
-  left_join(df_sector, join_by(muni_id))
+  left_join(df_sector, join_by(muni_id)) |> 
+  left_join(read_ses_2013(), join_by(muni_id)) |> 
+  left_join(read_peri_2004(), join_by(muni_id)) |> 
+  left_join(read_nat_pri_munis(), join_by(muni_id))
 ```
 
-### Recode and add variables
+## Recode and add variables
 
 ```{r}
 df <- df |> 
@@ -740,7 +868,7 @@ df_gini <- df |>
     # top10_pct_2 = 1 - reldist::wtd.quantile(budget_approved_culture, weight = pop, q = 0.9) / sum(budget_approved_culture * pop),
     top10_pct = top_prop(budget_approved_culture_per_capita, weights = as.integer(pop), top_prop = 0.1),
     bot50_pct = 1 - top_prop(budget_approved_culture_per_capita, weights = as.integer(pop), top_prop = 0.5),
-    mid50_90_pct = 1 - top10_pct_3 - bot50_pct
+    mid50_90_pct = 1 - top10_pct - bot50_pct
   )
 ```
 
