@@ -38,11 +38,15 @@ This function finds the file extension of a file.
 It receives a string as an argument, and returns the last letters and numbers of the string, prefixed by a dot (`.`).
 This helps to identify the file type from a file path, mainly used to write temporary files to disk when reading Excel files.
 
+## Get file extension
+
 ```{r}
 get_file_ext <- function(string) {
   str_c(".", str_extract(string, "[0-9a-z]+$"))
 }
 ```
+
+## Read online Excel file
 
 This function reads an Excel file from a url online.
 It receives a url and other arguments used by `read_excel()`, and returns the tibble after being read.
@@ -54,6 +58,7 @@ read_excel_url <- function(url, ...) {
 }
 ```
 
+## Fix column names
 
 This function helps to fix column names of Excel tables, mainly of the form of those found in Israeli CBS municipality data.
 It does so by fixing a single row of to-be column names.
@@ -117,11 +122,15 @@ merge_names <- function(data, names_num = 2, fill_missing = TRUE) {
 }
 ```
 
+## Fix yishuv id
+
 ```{r}
 fix_yishuv_id <- function(yishuv_id) {
   str_pad(yishuv_id, width = 4, side = "left", pad = "0")
 }
 ```
+
+## Clean yishuv name
 
 ```{r}
 clean_yishuv_name <- function(yishuv_name) {
