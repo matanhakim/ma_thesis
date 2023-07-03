@@ -364,7 +364,7 @@ read_elect_muni <- function() {
 This function computes voting percentages for Likud and coalition parties in every municipality. It filters out NA values (like Beduin tribes). In 2015, there were no voting in Ein Kinya.
 
 ```{r}
-get_elect_pct <- function() {
+read_elect_pct <- function() {
   
   read_elect_muni() |>  
     rename(
@@ -379,8 +379,8 @@ get_elect_pct <- function() {
     ) |> 
     group_by(muni_id) |> 
     summarize(
-      likud_pct = 100 * sum(halikud) / sum(good_votes),
-      coal_pct = 100 * sum(
+      elec_likud_pct = 100 * sum(halikud) / sum(good_votes),
+      elec_coal_pct = 100 * sum(
         yahadut_hatorah +
         habait_hayehudi +
         kulanu +
@@ -388,8 +388,8 @@ get_elect_pct <- function() {
         halikud +
         shas
       ) / sum(good_votes),
-      pot_votes = sum(pot_votes),
-      good_votes = sum(good_votes)
+      elec_pot_votes = sum(pot_votes),
+      elec_good_votes = sum(good_votes)
     ) |> 
     filter(!is.na(muni_id))
 }
@@ -819,13 +819,13 @@ df <- expand_grid(
   ) |> 
   left_join(culture_budget_by_muni(), join_by(year, muni_id)) |> 
   left_join(read_sela_budget(), join_by(year, muni_id)) |> 
-  mutate(across(contains("budget"), \(x) replace_na(x, 0))) |> 
   left_join(df_pop, join_by(year, muni_id)) |> 
   left_join(df_sector, join_by(muni_id)) |> 
   left_join(read_ses_2013(), join_by(muni_id)) |> 
   left_join(read_peri_2004(), join_by(muni_id)) |> 
   left_join(df_peri_2015, join_by(muni_id)) |> 
-  left_join(read_nat_pri_munis(), join_by(muni_id))
+  left_join(read_nat_pri_munis(), join_by(muni_id)) |> 
+  left_join(read_elect_pct(), join_by(muni_id))
 ```
 
 ## Recode and add variables
@@ -842,6 +842,7 @@ na_peri_muni <- c(
 
 df <- df |> 
   mutate(
+    across(contains(c("budget", "elec")), \(x) replace_na(x, 0)),
     budget_approved_culture_per_capita = budget_approved_culture / pop,
     peri_2004_i = replace_match(peri_2004_i, muni_id, na_peri_muni, peri_2015_i),
     peri_2004_r = replace_match(peri_2004_r, muni_id, na_peri_muni, peri_2015_r),
