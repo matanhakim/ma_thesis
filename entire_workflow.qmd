@@ -140,6 +140,18 @@ clean_yishuv_name <- function(yishuv_name) {
 }
 ```
 
+## Replace NAs with other column
+
+```{r}
+replace_match <- function(vec, vec_id, match_id, replace_with) {
+  case_match(
+    {{ vec_id }},
+    match_id ~ {{ replace_with }},
+    .default = vec
+  )
+}
+```
+
 
 # Municipalities data
 
@@ -317,8 +329,9 @@ Important to note that this is and old indicator, therefore since then some muni
 
 ```{r}
 read_peri_2004 <- function() {
+  df <- read_excel("data/indices/24_08_160t2.xls", skip = 7) 
   
-  read_excel("data/municipalities/24_08_160t2.xls", skip = 7) |> 
+  df |> 
     select(
       muni_id = 1,
       peri_2004_i = 9,
@@ -329,7 +342,7 @@ read_peri_2004 <- function() {
       muni_id = as.character(muni_id),
       muni_id = case_when(
         str_length(muni_id) == 5 ~ str_sub(muni_id, start = -2),
-        TRUE ~ str_pad(muni_id, width = 4, side = "left", pad = "0")
+        TRUE ~ fix_yishuv_id(muni_id)
       )
     )
 }
@@ -669,31 +682,6 @@ read_ses_2013 <- function() {
 }
 ```
 
-## 2004 CBS periphery data
-
-Important to note that this is and old indicator, therefore since then some municipal jurisdiction changes have happened:
-
-```{r}
-read_peri_2004 <- function() {
-  df <- read_excel("data/indices/24_08_160t2.xls", skip = 7) 
-  
-  df |> 
-    select(
-      muni_id = 1,
-      peri_2004_i = 9,
-      peri_2004_r = 10,
-      peri_2004_c = 11
-    ) |> 
-    mutate(
-      muni_id = as.character(muni_id),
-      muni_id = case_when(
-        str_length(muni_id) == 5 ~ str_sub(muni_id, start = -2),
-        TRUE ~ fix_yishuv_id(muni_id)
-      )
-    )
-}
-```
-
 ## National priority settlements decided by the Israeli government
 
 Since the SELA budget relies also on national priority areas, these data are needed to be imported.
@@ -805,6 +793,17 @@ df_sector <- read_muni_new_var("data/municipalities/2019.xlsx", "arab_pct", 16) 
   ) |> 
   select(!arab_pct)
 ```
+## Read periphery 2015 indices
+
+```{r}
+df_peri_2015 <- read_muni_new("data/municipalities/2016.xlsx") |> 
+  select(
+    muni_id = 2,
+    peri_2015_c = 187,
+    peri_2015_i = 188,
+    peri_2015_r = 189
+  )
+```
 
 
 ## Combine all data frames
@@ -825,15 +824,28 @@ df <- expand_grid(
   left_join(df_sector, join_by(muni_id)) |> 
   left_join(read_ses_2013(), join_by(muni_id)) |> 
   left_join(read_peri_2004(), join_by(muni_id)) |> 
+  left_join(df_peri_2015, join_by(muni_id)) |> 
   left_join(read_nat_pri_munis(), join_by(muni_id))
 ```
 
 ## Recode and add variables
 
 ```{r}
+na_peri_muni <- c(
+  "0483", # Bueina
+  "0628", # Jat
+  "0490", # Dir ElAssad
+  "0534", # Osfia
+  "69", # AlQasum
+  "68" # Neve Midbar
+)
+
 df <- df |> 
   mutate(
-    budget_approved_culture_per_capita = budget_approved_culture / pop
+    budget_approved_culture_per_capita = budget_approved_culture / pop,
+    peri_2004_i = replace_match(peri_2004_i, muni_id, na_peri_muni, peri_2015_i),
+    peri_2004_r = replace_match(peri_2004_r, muni_id, na_peri_muni, peri_2015_r),
+    peri_2004_c = replace_match(peri_2004_c, muni_id, na_peri_muni, peri_2015_c)
   )
 ```
 
@@ -886,7 +898,7 @@ df_gini <- df |>
 ```{r}
 df_gini |> 
   pivot_longer(!year, names_to = "statistic", values_to = "value") |> 
-  ggplot(aes(year, value, color = statistic)) +
+  ggplot(aes(year, value, color = statistic, shape = statistic)) +
   geom_line() +
   geom_point()
   
