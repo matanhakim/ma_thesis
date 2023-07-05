@@ -799,6 +799,7 @@ df_sector <- read_muni_new_var("data/municipalities/2019.xlsx", "arab_pct", 16) 
 df_peri_2015 <- read_muni_new("data/municipalities/2016.xlsx") |> 
   select(
     muni_id = 2,
+    muni_type = 4,
     peri_2015_c = 187,
     peri_2015_i = 188,
     peri_2015_r = 189
@@ -903,5 +904,66 @@ df_gini |>
   geom_line() +
   geom_point()
   
+```
+
+# Sela Analysis
+
+## Sela 2018 eligibility
+
+```{r}
+df_2018 <- df |> 
+  filter(year == 2018) |> 
+  left_join(df |> filter(year == 2015) |> select(muni_id, pop_2015 = pop), join_by(muni_id))
+```
+
+### Festival eligibility
+
+The population year determined to use to decide eligibility is 2015. using 2018 created some municipalities that changed population category between the years. the 2015 year was the latest available during the start of 2018.
+
+```{r}
+df_2018 <- df_2018 |> 
+  mutate(
+    is_elig_fest = case_when(
+      pop_2015 > 100000 ~ FALSE,
+      ses_2013_c >= 6 + 2 ~ FALSE,
+      ses_2013_c <= 6 ~ TRUE,
+      muni_type == "מועצה אזורית" & peri_2004_c <= 2 ~ TRUE,
+      is_nat_pri ~ TRUE,
+      TRUE ~ FALSE
+    ),
+    budget_elig_fest = case_when(
+      !is_elig_fest ~ 0,
+      pop_2015 <= 5000 ~ 70000,
+      pop_2015 <= 20000 ~ 115000,
+      pop_2015 > 20000 ~ 200000
+    )
+  )
+```
+
+### Initiatives eligibility
+
+The eligibility score of each municipality is calculated: first  the score is calculated according the the regulations. the score is normalized between all eligible municipalities and then multiplied by a number close to the total budget allocated. the specific number was decided through trial and error to match the vast majority of municipalities. 
+
+```{r}
+df_2018 <- df_2018 |> 
+  mutate(
+    score_elig_init = case_when(
+      pop_2015 <= 10000 ~ 1,
+      pop_2015 <= 50000 ~ 2,
+      pop_2015 <= 100000 ~ 3,
+      pop_2015 <= 150000 ~ 4,
+      pop_2015 <= 200000 ~ 5,
+      pop_2015 <= 500000 ~ 6,
+      pop_2015 > 500000 ~ 7
+    ),
+    score_elig_init = case_when(
+      pop_2015 > 100000 ~ score_elig_init,
+      is_nat_pri ~ score_elig_init * 2,
+      ses_2013_c <= 6 ~ score_elig_init * 2,
+      peri_2004_c <= 2 ~ score_elig_init * 2,
+      TRUE ~ score_elig_init
+    ),
+    budget_elig_init = 23959050 * score_elig_init / sum(score_elig_init * (budget_approved_init > 0))
+  )
 ```
 
