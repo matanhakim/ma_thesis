@@ -22,6 +22,10 @@ library(readxl)
 library(httr)
 library(rvest)
 library(reldist)
+library(scales)
+library(timeDate)
+library(gtsummary)
+library(tidymodels)
 # library(rvest)
 # locale("he")
 ```
@@ -317,7 +321,8 @@ read_ses_2013 <- function(url) {
       muni_id = case_when(
         (muni_status == "0" | muni_status == "99") ~ str_pad(muni_id, width = 4, side = "left", pad = "0"),
         TRUE ~ str_pad(muni_status, width = 2, side = "left", pad = "0")
-      )
+      ),
+      across(c(ses_2013_r, ses_2013_c), parse_double)
     ) |> 
     select(!muni_status)
 }
@@ -369,7 +374,7 @@ read_elect_pct <- function() {
   read_elect_muni() |>  
     rename(
       pot_votes = 4,
-      good_votes = 7,
+      elec_good_votes = 7,
       yahadut_hatorah = 9,
       habait_hayehudi = 14,
       kulanu = 19,
@@ -379,7 +384,7 @@ read_elect_pct <- function() {
     ) |> 
     group_by(muni_id) |> 
     summarize(
-      elec_likud_pct = 100 * sum(halikud) / sum(good_votes),
+      elec_likud_pct = 100 * sum(halikud) / sum(elec_good_votes),
       elec_coal_pct = 100 * sum(
         yahadut_hatorah +
         habait_hayehudi +
@@ -387,9 +392,9 @@ read_elect_pct <- function() {
         israel_beytenu +
         halikud +
         shas
-      ) / sum(good_votes),
+      ) / sum(elec_good_votes),
       elec_pot_votes = sum(pot_votes),
-      elec_good_votes = sum(good_votes)
+      elec_good_votes = sum(elec_good_votes)
     ) |> 
     filter(!is.na(muni_id))
 }
@@ -652,35 +657,6 @@ culture_budget_by_muni <- function() {
 # CBS cluster data
 
 
-## 2013 CBS SES data
-
-This function reads the 2013 CBS SES data for municipalities that is being used by 2018 SELA regulations to determine eligibility of municipalities.
-It reads the file, selects the relevant variables, removes excess rows, and transforms the id to the usual format.
-
-```{r}
-read_ses_2013 <- function() {
-  df <- read_excel("data/indices/t02.xls", skip = 6)
-  
-  df |> 
-    slice(2:256) |>
-    select(
-      muni_status = 1,
-      muni_id = 2,
-      ses_2013_i = 5,
-      ses_2013_r = 6,
-      ses_2013_c = 7
-    ) |> 
-    mutate(
-      muni_id = as.character(muni_id),
-      muni_id = case_when(
-        (muni_status == "0" | muni_status == "99") ~ fix_yishuv_id(muni_id),
-        TRUE ~ str_pad(muni_status, width = 2, side = "left", pad = "0")
-      )
-    ) |> 
-    select(!muni_status)
-   
-}
-```
 
 ## National priority settlements decided by the Israeli government
 
@@ -692,11 +668,17 @@ This function reads the table data in the national priority areas government dec
 
 ```{r}
 get_nat_pri_list <- function(){
-  nat_pri_url <- "https://www.gov.il/he/departments/policies/2013_des667"
+  # nat_pri_url <- "https://www.gov.il/he/departments/policies/2013_des667"
+  # 
+  # read_html(nat_pri_url) |>
+  #   html_elements("table") |> 
+  #   html_table()
   
-  read_html(nat_pri_url) |>
-    html_elements("table") |> 
-    html_table()
+  list(
+    read_csv("data/national_priority/nafot_priority.csv", col_names = FALSE),
+    read_csv("data/national_priority/yishuvim_border.csv"),
+    read_csv("data/national_priority/yishuvim_priority.csv")
+  )
 }
 ```
 
@@ -963,7 +945,358 @@ df_2018 <- df_2018 |>
       peri_2004_c <= 2 ~ score_elig_init * 2,
       TRUE ~ score_elig_init
     ),
-    budget_elig_init = 23959050 * score_elig_init / sum(score_elig_init * (budget_approved_init > 0))
+    budget_elig_init = 23959050 * score_elig_init / sum(score_elig_init * (budget_approved_init > 0)),
+    budget_elig_tot = budget_elig_fest + budget_elig_init
+  )
+```
+
+
+## Modelling Sela budget
+
+### Check distribution of dependant variable
+```{r}
+df_2018 |> 
+  ggplot(aes(budget_elig_tot)) +
+  geom_histogram() +
+  theme_minimal() +
+  scale_x_continuous(labels = label_comma()) +
+  labs(
+    x = 'גובה הזכאות של רשות מקומית לתמיכה תקציבית של תקנת סל"ע בשנת 2018 (ש"ח)',
+    y = "מספר רשויות"
+  )
+  
+df_2018 |> 
+  summarise(
+    mean = mean(budget_elig_tot),
+    sd = sd(budget_elig_tot),
+    skewness = skewness(budget_elig_tot),
+    kurtosis = kurtosis(budget_elig_tot)
+  )
+```
+
+### Distribution table of all variables
+```{r}
+df_2018 |> 
+  select(
+    budget_elig_tot,
+    pop_2015,
+    ses_2013_c,
+    peri_2004_c,
+    sector,
+    elec_likud_pct
+  ) |> 
+  tbl_summary(
+    statistic = list(all_continuous() ~ "{mean} ({sd})")
+  )
+```
+
+
+### Model with Likud voting percent
+```{r}
+sela_mdl2 <- lm(budget_elig_tot ~ sector * elec_likud_pct, data = df_2018)
+
+sela_mdl2 %>% 
+  tidy()
+
+sela_mdl2 %>% 
+  glance()
+
+sela_mdl2 %>% 
+  augment() %>% 
+  ggplot(aes(elec_likud_pct, budget_elig_tot, color = sector)) + 
+  geom_line(aes(y = .fitted)) +
+  geom_point()
+```
+This shows a good relationship so that jewish municipalities are receiveing more budget as the Likud voting percent rises.
+
+
+```{r}
+sela_mdl3 <- lm(budget_elig_tot ~ sector : elec_likud_pct + pop_2015 + ses_2013_c + peri_2004_c, data = df_2018)
+sela_mdl3_control <- lm(budget_elig_tot ~ pop_2015 + ses_2013_c + peri_2004_c, data = df_2018)
+sela_mdl3_control2 <- lm(budget_elig_tot ~ pop_2015 + ses_2013_c + peri_2004_c + is_nat_pri, data = df_2018)
+anova(sela_mdl3_control, sela_mdl3)
+
+sela_mdl3 %>% 
+  tidy()
+
+sela_mdl3 %>% 
+  glance()
+
+sela_mdl3_control %>% 
+  tidy()
+
+sela_mdl3_control %>% 
+  glance()
+
+sela_mdl3 %>% 
+  augment() %>% 
+  ggplot(aes(elec_likud_pct, budget_elig_tot, color = sector)) + 
+  geom_line(aes(y = .fitted)) +
+  geom_point()
+
+sela_mdl3 %>% 
+  augment() %>% 
+  ggplot(aes(elec_likud_pct, .fitted - sela_mdl3_control %>% augment() %>% pull(.fitted), color = sector)) + 
+  geom_line() +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+```
+The model is still significant for Likud voting percentage after adding control variables.
+
+Let's create a better plot for the last plot of the difference between the two models.
+```{r}
+sela_mdl3 %>% 
+  augment() %>% 
+  ggplot(aes(
+    elec_likud_pct, .fitted - sela_mdl3_control %>% augment() %>% pull(.fitted),
+    color = sector,
+    shape = sector
+  )) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_y_continuous(labels = label_comma()) +
+  scale_x_continuous(labels = label_percent(scale = 1)) +
+  scale_color_discrete(labels = c("ערבי", "יהודי")) +
+  scale_shape_discrete(labels = c("ערבי", "יהודי")) +
+  guides(shape = guide_legend(override.aes = list(size = 3))) +
+  theme(legend.position = "bottom") +
+  labs(
+    x = "אחוז הצבעה לליכוד בבחירות 2015",
+    y = '\u202B"דיבידנד הנאמנות בתרבות" (ש"ח)',
+    color = "מגזר",
+    shape = "מגזר"
+  )
+
+```
+
+
+Let's put the two models in a table.
+
+```{r}
+tbl_merge(
+  list(
+    tbl_regression(
+      sela_mdl3_control,
+      intercept = TRUE,
+      conf.int = FALSE
+    ) %>% 
+      modify_header(
+        statistic = "**t-statistic**",
+        std.error = "**SE**"
+      ) %>% 
+      bold_p() %>% 
+      add_glance_table(
+        include = c(r.squared, statistic)
+      )
+    ,
+    tbl_regression(
+      sela_mdl3,
+      intercept = TRUE,
+      conf.int = FALSE
+    ) %>% 
+      modify_header(
+        statistic = "**t-statistic**",
+        std.error = "**SE**"
+      ) %>% 
+      bold_p() %>% 
+      add_glance_table(
+        include = c(r.squared, statistic)
+      )
+  ),
+  tab_spanner = c("M1", "M2")
+) %>% 
+  modify_table_body(~.x %>% arrange(row_type == "glance_statistic")) %>% 
+  as_flex_table()
+```
+
+### Check model outcomes
+
+Let's check the distribution of voting to Likud across SES clusters.
+```{r}
+elec_more_df <- df %>% 
+  mutate(
+    likud_votes = elec_good_votes * (elec_likud_pct / 100),
+    ses_2013_c = factor(ses_2013_c)
+  )
+
+elec_more_df %>% 
+  group_by(ses_2013_c) %>% 
+  summarise(elec_likud_pct = round(sum(likud_votes) / sum(elec_good_votes) * 100, 1)) %>% 
+  ggplot(aes(ses_2013_c, elec_likud_pct)) +
+  geom_col() + 
+  geom_text(
+      aes(label = paste0(round(elec_likud_pct, digits = 1), "%")),
+      vjust = -0.5
+  ) +
+  scale_y_continuous(
+    labels = label_percent(scale = 1),
+    expand = expansion(mult = c(0, 0.1))
+  ) +
+  labs(
+    x = "\u202Bאשכול חברתי-כלכלי (2013)",
+    y = "\u202Bאחוז הצבעה לליכוד בבחירות 2015"
+  )
+```
+
+
+Since SES cluster 7 had special criteria, Let's look at the Likud voting patterns within them.
+
+```{r}
+ses_7_df <- elec_more_df %>% 
+  filter(ses_2013_c == "7")
+
+ses_7_df %>% 
+  count(is_nat_pri, muni_type == "מועצה אזורית" & peri_2004_c <= 2)
+
+ses_7_df %>% 
+  group_by(is_nat_pri) %>% 
+  summarise(elec_likud_pct = round(sum(likud_votes) / sum(elec_good_votes) * 100, 1)) %>% 
+  ggplot(aes(is_nat_pri, elec_likud_pct)) +
+  geom_col() + 
+  geom_text(
+      aes(label = paste0(round(elec_likud_pct, digits = 1), "%")),
+      vjust = -0.5
+  ) +
+  scale_y_continuous(
+    labels = label_percent(scale = 1),
+    expand = expansion(mult = c(0, 0.1))
+  ) +
+  labs(
+    x = "אזור עדיפות לאומית",
+    y = "אחוז הצבעה לליכוד"
+  )
+
+# by a simple mean and not total mean
+ses_7_df %>% 
+  group_by(is_nat_pri) %>% 
+  summarise(elec_likud_pct = round(mean(elec_likud_pct), 1)) %>% 
+  ggplot(aes(is_nat_pri, elec_likud_pct)) +
+  geom_col() + 
+  geom_text(
+      aes(label = paste0(round(elec_likud_pct, digits = 1), "%")),
+      vjust = -0.5
+  ) +
+  scale_y_continuous(
+    labels = label_percent(scale = 1),
+    expand = expansion(mult = c(0, 0.1))
+  ) +
+  labs(
+    x = "אזור עדיפות לאומית",
+    y = "אחוז הצבעה לליכוד"
+  )
+
+# by eligibility criterea for initiatives
+elec_more_df %>% 
+  filter(ses_2013_c %in% c("7", "8", "9", "10")) %>% 
+  mutate(special_elig_init = is_nat_pri | peri_2004_c <= 2) %>% 
+  group_by(special_elig_init) %>% 
+  summarise(elec_likud_pct = round(mean(elec_likud_pct), 1)) %>% 
+  ggplot(aes(special_elig_init, elec_likud_pct)) +
+  geom_col() + 
+  geom_text(
+      aes(label = paste0(round(elec_likud_pct, digits = 1), "%")),
+      vjust = -0.5
+  ) +
+  scale_y_continuous(
+    labels = label_percent(scale = 1),
+    expand = expansion(mult = c(0, 0.1))
+  ) +
+  labs(
+    x = "אזור עדיפות לאומית או רשות פריפריאלית",
+    y = "אחוז הצבעה לליכוד"
+  )
+```
+
+## Sensitivity analysis for Sela SES cluster threshhold
+
+### Function for calculating eligibilty by SES cluster
+
+```{r}
+calc_eligibility <- function(data, cluster) {
+  data |> 
+    mutate( # Festivals eligibility
+      is_elig_fest = case_when(
+        pop_2015 > 100000 ~ FALSE,
+        ses_2013_c >= cluster + 2 ~ FALSE,
+        ses_2013_c <= cluster ~ TRUE,
+        muni_type == "מועצה אזורית" & peri_2004_c <= 2 ~ TRUE,
+        is_nat_pri ~ TRUE,
+        TRUE ~ FALSE
+      ),
+      budget_elig_fest = case_when(
+        !is_elig_fest ~ 0,
+        pop_2015 <= 5000 ~ 70000,
+        pop_2015 <= 20000 ~ 115000,
+        pop_2015 > 20000 ~ 200000
+      )
+    ) |> 
+    mutate( # Initiatives eligibility
+      score_elig_init = case_when(
+        pop_2015 <= 10000 ~ 1,
+        pop_2015 <= 50000 ~ 2,
+        pop_2015 <= 100000 ~ 3,
+        pop_2015 <= 150000 ~ 4,
+        pop_2015 <= 200000 ~ 5,
+        pop_2015 <= 500000 ~ 6,
+        pop_2015 > 500000 ~ 7
+      ),
+      score_elig_init = case_when(
+        pop_2015 > 100000 ~ score_elig_init,
+        is_nat_pri ~ score_elig_init * 2,
+        ses_2013_c <= cluster ~ score_elig_init * 2,
+        peri_2004_c <= 2 ~ score_elig_init * 2,
+        TRUE ~ score_elig_init
+      ),
+      budget_elig_init = 23959050 * score_elig_init / sum(score_elig_init * (budget_approved_init > 0)),
+      budget_elig_tot = budget_elig_fest + budget_elig_init
+    )
+}
+```
+
+### Function for modeling by cluster
+
+```{r}
+model_sela <- function(data) {
+  sela_mdl <- lm(budget_elig_tot ~ sector : elec_likud_pct + pop_2015 + ses_2013_c + peri_2004_c, data = data)
+  sela_mdl_control <- lm(budget_elig_tot ~ pop_2015 + ses_2013_c + peri_2004_c, data = data)
+  mdl_anova <- anova(sela_mdl_control, sela_mdl)
+  df_effect <- sela_mdl |> 
+    tidy() |> 
+    filter(term == "sectorjewish:elec_likud_pct")
+  
+  tibble(
+    data = list(data),
+    m1 = list(sela_mdl_control),
+    m2 = list(sela_mdl),
+    anova = list(mdl_anova),
+    p_anova = mdl_anova[[6]][[2]],
+    b_effect = df_effect$estimate,
+    p_effect = df_effect$p.value
+  )
+}
+```
+
+### Create data frame for model by SES cluster threshhold
+
+```{r}
+df_sela_mdl <- map2(list(df_2018), 1:10, calc_eligibility) |> 
+  map(model_sela) |> 
+  list_rbind() |> 
+  mutate(cluster = 1:10)
+```
+
+```{r}
+df_sela_mdl |> 
+  ggplot(aes(cluster, b_effect, label = comma(b_effect))) +
+  geom_col() +
+  geom_text(aes(vjust = -1 * sign(b_effect))) +
+  scale_x_continuous(breaks = 1:10) +
+  scale_y_continuous(
+    labels = label_comma(), expand = expansion(mult = c(0.1, 0.1))
+  ) +
+  labs(
+    x = "אשכול סף חברתי-כלכלי",
+    y = 'דיבידנד נאמנות (ש"ח)'
   )
 ```
 
