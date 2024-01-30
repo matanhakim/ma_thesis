@@ -26,6 +26,7 @@ library(scales)
 library(timeDate)
 library(gtsummary)
 library(tidymodels)
+library(rtlr)
 # library(rvest)
 # locale("he")
 ```
@@ -34,6 +35,16 @@ library(tidymodels)
 conflicts_prefer(dplyr::filter())
 ```
 
+## Graphics
+
+```{r}
+theme_set(theme_minimal())
+decile_labs <- c(
+  "חלקם של 50% התחתונים בתקציב התרבות",
+  "חלקם של העשירונים השישי עד התשיעי בתקציב התרבות",
+  "חלקו של העשירון העליון בתקציב התרבות"
+)
+```
 
 
 # Utility functions
@@ -882,9 +893,56 @@ df_gini <- df |>
 ```{r}
 df_gini |> 
   pivot_longer(!year, names_to = "statistic", values_to = "value") |> 
+    filter(statistic == "gini") |> 
+  ggplot(aes(year, value)) +
+  geom_line() +
+  geom_point() +
+  geom_text(
+    data = df_gini |> 
+      pivot_longer(!year, names_to = "statistic", values_to = "value") |> 
+      filter(statistic == "gini", year == 2019),
+    aes(label = round(value, 3)),
+    vjust = -1
+  ) +
+  labs(
+    x = "שנה",
+    y = "ערך מדד ג'יני"
+  )
+  
+```
+
+```{r}
+df_gini |> 
+  pivot_longer(!year, names_to = "statistic", values_to = "value") |> 
+  filter(statistic != "gini") |> 
   ggplot(aes(year, value, color = statistic, shape = statistic)) +
   geom_line() +
-  geom_point()
+  geom_point() +
+  geom_text(
+    data = df_gini |> 
+      pivot_longer(!year, names_to = "statistic", values_to = "value") |> 
+      filter(statistic != "gini", year == 2019),
+    aes(label = percent(value, 0.1)),
+    vjust = -1,
+    show.legend = FALSE
+  ) +
+  scale_y_continuous(labels = label_percent()) +
+  scale_color_discrete(labels = decile_labs) +
+  scale_shape_discrete(labels = decile_labs) +
+  guides(
+    color = guide_legend(reverse = TRUE),
+    shape = guide_legend(reverse = TRUE)
+  ) +
+  theme(
+    legend.title= element_blank(),
+    legend.position = c(0.25, 0.4),
+    legend.background = element_rect(fill = "white", color = "black")
+  ) +
+    labs(
+    x = "שנה",
+    y = "חלקה של כל קבוצה מתוך תקציב מינהל תרבות",
+    
+  )
   
 ```
 
