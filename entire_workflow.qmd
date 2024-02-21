@@ -1026,6 +1026,43 @@ df_ineq_type <- df |>
   )
 ```
 
+## Elephant curve
+
+```{r}
+percentile_sum <- function(var, weights = 1) {
+  tibble(x = var, w = weights) |> 
+    uncount(w) |> 
+    arrange(desc(x)) |> 
+    mutate(
+      percentile = ceiling((length(x):1) * 100 / length(x))
+    ) |> 
+    summarise(
+      .by = percentile,
+      percentile_sum = sum(x)
+    ) |> 
+    pull(percentile_sum)
+}
+```
+
+```{r}
+percentile_sum_df <- function(data, year) {
+  data |> 
+    filter(year == {{ year }}) |> 
+    reframe("budget_{{year}}" := percentile_sum(budget_approved_culture_per_capita, weights = pop)) |> 
+    mutate(percentile = 100:1, .before = 1)
+}
+```
+
+
+```{r}
+df_elephant <- df |> 
+  percentile_sum_df(2013) |> 
+  left_join(df |> percentile_sum_df(2018), join_by(percentile)) |> 
+  mutate(
+    growth_rate = budget_2018 / budget_2013 - 1,
+    growth_difference = budget_2018 - budget_2013
+  )
+```
 
 ## Visualize
 
@@ -1156,6 +1193,17 @@ df_clusters |>
   
 ```
 
+```{r}
+df_elephant |> 
+  ggplot(aes(percentile, growth_rate)) +
+  geom_point() +
+  geom_line()
+
+df_elephant |> 
+  ggplot(aes(percentile, growth_difference)) +
+  geom_point() +
+  geom_line()
+```
 
 # Growth rate of budget by group
 
