@@ -1,21 +1,136 @@
----
-title: "Thesis - Import Files"
-toc: true
-number-sections: true
-format: gfm
-warning: false
-output: false
-error: true
-editor_options: 
-  markdown: 
-    wrap: sentence
----
+# Thesis - Import Files
+
+
+- [<span class="toc-section-number">1</span> Setup](#setup)
+  - [<span class="toc-section-number">1.1</span> Load
+    libraries](#load-libraries)
+  - [<span class="toc-section-number">1.2</span> Library
+    conflicts](#library-conflicts)
+  - [<span class="toc-section-number">1.3</span> Graphics](#graphics)
+- [<span class="toc-section-number">2</span> Utility
+  functions](#utility-functions)
+  - [<span class="toc-section-number">2.1</span> Get file
+    extension](#get-file-extension)
+  - [<span class="toc-section-number">2.2</span> Read online Excel
+    file](#read-online-excel-file)
+  - [<span class="toc-section-number">2.3</span> Fix column
+    names](#fix-column-names)
+  - [<span class="toc-section-number">2.4</span> Fix yishuv
+    id](#fix-yishuv-id)
+  - [<span class="toc-section-number">2.5</span> Clean yishuv
+    name](#clean-yishuv-name)
+  - [<span class="toc-section-number">2.6</span> Replace NAs with other
+    column](#replace-nas-with-other-column)
+  - [<span class="toc-section-number">2.7</span> Plot line chart of a
+    statistic by year](#plot-line-chart-of-a-statistic-by-year)
+- [<span class="toc-section-number">3</span> Municipalities
+  data](#municipalities-data)
+  - [<span class="toc-section-number">3.1</span> Import a single
+    municipalities file from CBS (2016 and
+    later)](#import-a-single-municipalities-file-from-cbs-2016-and-later)
+  - [<span class="toc-section-number">3.2</span> Import a single
+    variable from a CBS municipalities file (2016 and later) with a
+    single
+    variable](#import-a-single-variable-from-a-cbs-municipalities-file-2016-and-later-with-a-single-variable)
+  - [<span class="toc-section-number">3.3</span> Import a single
+    variable from a CBS municipalities file (2015 and before) with a
+    single
+    variable](#import-a-single-variable-from-a-cbs-municipalities-file-2015-and-before-with-a-single-variable)
+  - [<span class="toc-section-number">3.4</span> Municipality
+    id](#municipality-id)
+  - [<span class="toc-section-number">3.5</span> Yishuvim](#yishuvim)
+  - [<span class="toc-section-number">3.6</span> 2013 CBS SES
+    data](#2013-cbs-ses-data)
+  - [<span class="toc-section-number">3.7</span> 2004 CBS periphery
+    data](#2004-cbs-periphery-data)
+- [<span class="toc-section-number">4</span> Elections
+  data](#elections-data)
+- [<span class="toc-section-number">5</span> Organizations
+  data](#organizations-data)
+  - [<span class="toc-section-number">5.1</span> Amutot](#amutot)
+  - [<span class="toc-section-number">5.2</span> Companies](#companies)
+  - [<span class="toc-section-number">5.3</span>
+    Municipalities](#municipalities)
+  - [<span class="toc-section-number">5.4</span> Organiztions with no
+    record](#organiztions-with-no-record)
+  - [<span class="toc-section-number">5.5</span> Match yishuv id to
+    organizations](#match-yishuv-id-to-organizations)
+- [<span class="toc-section-number">6</span> Budget data](#budget-data)
+  - [<span class="toc-section-number">6.1</span> Sela](#sela)
+  - [<span class="toc-section-number">6.2</span> Culture
+    (total)](#culture-total)
+- [<span class="toc-section-number">7</span> CBS cluster
+  data](#cbs-cluster-data)
+  - [<span class="toc-section-number">7.1</span> National priority
+    settlements decided by the Israeli
+    government](#national-priority-settlements-decided-by-the-israeli-government)
+    - [<span class="toc-section-number">7.1.1</span> Getting the list of
+      tables from the national priority
+      webpage](#getting-the-list-of-tables-from-the-national-priority-webpage)
+    - [<span class="toc-section-number">7.1.2</span> Merging national
+      priority yishuvim, subdistricts (Nafot) and yishuvim close to the
+      border](#merging-national-priority-yishuvim-subdistricts-nafot-and-yishuvim-close-to-the-border)
+- [<span class="toc-section-number">8</span> Create a complete data
+  frame](#create-a-complete-data-frame)
+  - [<span class="toc-section-number">8.1</span> Read population for
+    every year](#read-population-for-every-year)
+  - [<span class="toc-section-number">8.2</span> Classify municipalities
+    to sector
+    (Jewish/Arab)](#classify-municipalities-to-sector-jewisharab)
+  - [<span class="toc-section-number">8.3</span> Read periphery 2015
+    indices](#read-periphery-2015-indices)
+  - [<span class="toc-section-number">8.4</span> Combine all data
+    frames](#combine-all-data-frames)
+  - [<span class="toc-section-number">8.5</span> Recode and add
+    variables](#recode-and-add-variables)
+- [<span class="toc-section-number">9</span> Inequality
+  measures](#inequality-measures)
+  - [<span class="toc-section-number">9.1</span> Top 10%](#top-10)
+  - [<span class="toc-section-number">9.2</span> Gini](#gini)
+  - [<span class="toc-section-number">9.3</span> Total
+    budget](#total-budget)
+  - [<span class="toc-section-number">9.4</span> Inequality
+    calculation](#inequality-calculation)
+  - [<span class="toc-section-number">9.5</span> Visualize](#visualize)
+- [<span class="toc-section-number">10</span> Growth rate of budget by
+  group](#growth-rate-of-budget-by-group)
+- [<span class="toc-section-number">11</span> Sela
+  Analysis](#sela-analysis)
+  - [<span class="toc-section-number">11.1</span> Sela 2018
+    eligibility](#sela-2018-eligibility)
+    - [<span class="toc-section-number">11.1.1</span> Festival
+      eligibility](#festival-eligibility)
+    - [<span class="toc-section-number">11.1.2</span> Initiatives
+      eligibility](#initiatives-eligibility)
+  - [<span class="toc-section-number">11.2</span> Modelling Sela
+    budget](#modelling-sela-budget)
+    - [<span class="toc-section-number">11.2.1</span> Check distribution
+      of dependant variable](#check-distribution-of-dependant-variable)
+    - [<span class="toc-section-number">11.2.2</span> Distribution table
+      of all variables](#distribution-table-of-all-variables)
+    - [<span class="toc-section-number">11.2.3</span> Model with Likud
+      voting percent](#model-with-likud-voting-percent)
+    - [<span class="toc-section-number">11.2.4</span> Check model
+      outcomes](#check-model-outcomes)
+  - [<span class="toc-section-number">11.3</span> Sensitivity analysis
+    for Sela SES cluster
+    threshhold](#sensitivity-analysis-for-sela-ses-cluster-threshhold)
+    - [<span class="toc-section-number">11.3.1</span> Function for
+      calculating eligibilty by SES
+      cluster](#function-for-calculating-eligibilty-by-ses-cluster)
+    - [<span class="toc-section-number">11.3.2</span> Function for
+      modeling by cluster](#function-for-modeling-by-cluster)
+    - [<span class="toc-section-number">11.3.3</span> Create data frame
+      for model by SES cluster
+      threshhold](#create-data-frame-for-model-by-ses-cluster-threshhold)
+  - [<span class="toc-section-number">11.4</span> Checking budget per
+    Likud voter](#checking-budget-per-likud-voter)
 
 # Setup
 
 ## Load libraries
 
-```{r}
+``` r
 library(conflicted)
 library(tidyverse)
 library(readxl)
@@ -31,14 +146,16 @@ library(extrafont)
 # library(rvest)
 # locale("he")
 ```
+
 ## Library conflicts
-```{r}
+
+``` r
 conflicts_prefer(dplyr::filter())
 ```
 
 ## Graphics
 
-```{r}
+``` r
 theme_set(theme_minimal())
 theme_update(
   text = element_text(family = "David")
@@ -56,16 +173,17 @@ sector_labs <- c(
 )
 ```
 
-
 # Utility functions
 
-This function finds the file extension of a file.
-It receives a string as an argument, and returns the last letters and numbers of the string, prefixed by a dot (`.`).
-This helps to identify the file type from a file path, mainly used to write temporary files to disk when reading Excel files.
+This function finds the file extension of a file. It receives a string
+as an argument, and returns the last letters and numbers of the string,
+prefixed by a dot (`.`). This helps to identify the file type from a
+file path, mainly used to write temporary files to disk when reading
+Excel files.
 
 ## Get file extension
 
-```{r}
+``` r
 get_file_ext <- function(string) {
   str_c(".", str_extract(string, "[0-9a-z]+$"))
 }
@@ -73,10 +191,11 @@ get_file_ext <- function(string) {
 
 ## Read online Excel file
 
-This function reads an Excel file from a url online.
-It receives a url and other arguments used by `read_excel()`, and returns the tibble after being read.
+This function reads an Excel file from a url online. It receives a url
+and other arguments used by `read_excel()`, and returns the tibble after
+being read.
 
-```{r}
+``` r
 read_excel_url <- function(url, ...) {
   GET(url, write_disk(tf <- tempfile(fileext = get_file_ext(url))))
   read_excel(tf, ...)
@@ -85,13 +204,17 @@ read_excel_url <- function(url, ...) {
 
 ## Fix column names
 
-This function helps to fix column names of Excel tables, mainly of the form of those found in Israeli CBS municipality data.
-It does so by fixing a single row of to-be column names.
-It receives a data frame, an integer number representing a single row considered as holding (some of the) variable names, and a logical length-one vector specifying whether to fill missing values with preceding values or not.
-This last argument is mostly used in the case of merged cells in Excel files.
-The function first transposes the row, and then either fills it with values or turns NAs to empty strings.
+This function helps to fix column names of Excel tables, mainly of the
+form of those found in Israeli CBS municipality data. It does so by
+fixing a single row of to-be column names. It receives a data frame, an
+integer number representing a single row considered as holding (some of
+the) variable names, and a logical length-one vector specifying whether
+to fill missing values with preceding values or not. This last argument
+is mostly used in the case of merged cells in Excel files. The function
+first transposes the row, and then either fills it with values or turns
+NAs to empty strings.
 
-```{r}
+``` r
 fix_names <- function(data, row_num, fill_missing) {
   data <- data |> 
     slice(row_num) |> 
@@ -118,15 +241,20 @@ fix_names <- function(data, row_num, fill_missing) {
 }
 ```
 
-This function fixes column names of Excel tables, mainly of the form of those found in Israeli CBS municipality data.
-It receives a data frame, a vector with the row numbers considered as holding the variable names, and a logical vector specifying whether to fill missing values with preceding values or not.
-This last argument should be either of length 1, or of length of `row_num`.
-It is mostly used in the case of merged cells in Excel files.
-The function saves the new column names by iterating over every row, fixing the variable names, binding all names to a single tibble, uniting the different columns to a single column and pulling these values as a vector. The old rows containing these column names are filtered out, and the new merged and fixed names are set to the data frame, which is then returned.
+This function fixes column names of Excel tables, mainly of the form of
+those found in Israeli CBS municipality data. It receives a data frame,
+a vector with the row numbers considered as holding the variable names,
+and a logical vector specifying whether to fill missing values with
+preceding values or not. This last argument should be either of length
+1, or of length of `row_num`. It is mostly used in the case of merged
+cells in Excel files. The function saves the new column names by
+iterating over every row, fixing the variable names, binding all names
+to a single tibble, uniting the different columns to a single column and
+pulling these values as a vector. The old rows containing these column
+names are filtered out, and the new merged and fixed names are set to
+the data frame, which is then returned.
 
-
-
-```{r}
+``` r
 merge_names <- function(data, names_num = 2, fill_missing = TRUE) {
   rows <- seq(names_num)
   col_names_merged <- map2(
@@ -149,7 +277,7 @@ merge_names <- function(data, names_num = 2, fill_missing = TRUE) {
 
 ## Fix yishuv id
 
-```{r}
+``` r
 fix_yishuv_id <- function(yishuv_id) {
   str_pad(yishuv_id, width = 4, side = "left", pad = "0")
 }
@@ -157,7 +285,7 @@ fix_yishuv_id <- function(yishuv_id) {
 
 ## Clean yishuv name
 
-```{r}
+``` r
 clean_yishuv_name <- function(yishuv_name) {
   yishuv_name |> 
     str_remove_all("[[:punct:][:symbol:][:digit:]&&[^'\\-()\"]]") |> 
@@ -167,7 +295,7 @@ clean_yishuv_name <- function(yishuv_name) {
 
 ## Replace NAs with other column
 
-```{r}
+``` r
 replace_match <- function(vec, vec_id, match_id, replace_with) {
   case_match(
     {{ vec_id }},
@@ -178,7 +306,8 @@ replace_match <- function(vec, vec_id, match_id, replace_with) {
 ```
 
 ## Plot line chart of a statistic by year
-```{r}
+
+``` r
 plot_line_group <- function(data, group, x = year, y = budget_per_capita, legend_labs = waiver()) {
   min_x <- min(data |> pull({{ x }}))
   max_x <- max(data |> pull({{ x }}))
@@ -206,21 +335,22 @@ plot_line_group <- function(data, group, x = year, y = budget_per_capita, legend
 }
 ```
 
-
-
 # Municipalities data
 
 ## Import a single municipalities file from CBS (2016 and later)
 
-This is a function that gets a path and returns a tibble.
-First, it creates a temporary file: it either downloads the file with the path parameter as url, or uses the local path.
-later, it reads the two lines of names of variables and handles each one of them separately.
-The upper row gets filled with previous variable names for NAs because of merged cells in the original table.
-The lower row gets blank string for NAs.
-When concatenating, if there is a second argument for the variable, the variable name gets padded with blank space between its two arguments.
-Finally, these column names are added to the tibble. The tibble is read again to ensure good guessing of column types.
+This is a function that gets a path and returns a tibble. First, it
+creates a temporary file: it either downloads the file with the path
+parameter as url, or uses the local path. later, it reads the two lines
+of names of variables and handles each one of them separately. The upper
+row gets filled with previous variable names for NAs because of merged
+cells in the original table. The lower row gets blank string for NAs.
+When concatenating, if there is a second argument for the variable, the
+variable name gets padded with blank space between its two arguments.
+Finally, these column names are added to the tibble. The tibble is read
+again to ensure good guessing of column types.
 
-```{r}
+``` r
 read_muni_new <- function(path, is_online = FALSE) {
   if (is_online)
     GET(path, write_disk(path <- tempfile(fileext = get_file_ext(path))))
@@ -233,12 +363,11 @@ read_muni_new <- function(path, is_online = FALSE) {
 }
 
 df_2018 <- read_muni_new("data/municipalities/2018.xlsx")
-
 ```
 
 ## Import a single variable from a CBS municipalities file (2016 and later) with a single variable
 
-```{r}
+``` r
 read_muni_new_var <- function(path, var_name, col_num, is_online = FALSE) {
   if(is_online)
     GET(path, write_disk(path <- tempfile(fileext = get_file_ext(path))))  
@@ -251,12 +380,14 @@ read_muni_new_var <- function(path, var_name, col_num, is_online = FALSE) {
 }
 ```
 
-
 ## Import a single variable from a CBS municipalities file (2015 and before) with a single variable
-This function is important because some SELA data is using population data older than 2018.
-This function takes the url of the file, the wanted column numbers for the cities and for the regional councils.
-It returns a tibble with a municipality id and the wanted variable values.
-```{r}
+
+This function is important because some SELA data is using population
+data older than 2018. This function takes the url of the file, the
+wanted column numbers for the cities and for the regional councils. It
+returns a tibble with a municipality id and the wanted variable values.
+
+``` r
 read_muni_old_var <- function(path, var_name, col_num_1, col_num_2, skip_rows = 1, is_online = FALSE) {
   if(is_online)
     GET(path, write_disk(path <- tempfile(fileext = get_file_ext(path))))  
@@ -280,14 +411,14 @@ read_muni_old_var <- function(path, var_name, col_num_1, col_num_2, skip_rows = 
   
   bind_rows(df1, df2) 
 }
-
 ```
 
 ## Municipality id
 
-Every municipality has different ids for different authorities. This function reads the requested ids and includes their names if requested.
+Every municipality has different ids for different authorities. This
+function reads the requested ids and includes their names if requested.
 
-```{r}
+``` r
 read_muni_id <- function(id_types = c("cbs", "edu", "tax"), include_names = FALSE) {
 
   data <- read_csv("https://raw.githubusercontent.com/matanhakim/general_files/main/muni_ids.csv", col_types = cols(.default = "c"))
@@ -305,12 +436,12 @@ read_muni_id <- function(id_types = c("cbs", "edu", "tax"), include_names = FALS
 }
 ```
 
-
 ## Yishuvim
 
-This function reads a specific variable from the yishuvim data, alongside its yishuv id.
+This function reads a specific variable from the yishuvim data,
+alongside its yishuv id.
 
-```{r}
+``` r
 read_yishuv <- function(var_name, col_num) {
   read_excel("data/yishuvim/bycode2021.xlsx", col_types = "text") |> 
     select(
@@ -325,7 +456,7 @@ read_yishuv <- function(var_name, col_num) {
 
 This is a specific function that matches yishuv and municipality id.
 
-```{r}
+``` r
 match_yishuv_muni <- function() {
   
   read_yishuv("muni_id", 9) |> 
@@ -338,9 +469,10 @@ match_yishuv_muni <- function() {
 }
 ```
 
-This function reads all possible names for yishuvim and their CBS yishuv id.
+This function reads all possible names for yishuvim and their CBS yishuv
+id.
 
-```{r}
+``` r
 read_yishuv_names <- function() {
   read_csv(
     "https://raw.githubusercontent.com/matanhakim/general_files/main/yishuv_names.csv",
@@ -349,13 +481,14 @@ read_yishuv_names <- function() {
 }
 ```
 
-
 ## 2013 CBS SES data
 
-This function reads the 2013 CBS SES data for municipalities that is being used by 2018 SELA regulations to determine eligibility of municipalities.
-It reads the file, selects the relevant variables, removes excess rows, and transforms the id to the usual format.
+This function reads the 2013 CBS SES data for municipalities that is
+being used by 2018 SELA regulations to determine eligibility of
+municipalities. It reads the file, selects the relevant variables,
+removes excess rows, and transforms the id to the usual format.
 
-```{r}
+``` r
 read_ses_2013 <- function(url) {
   
   read_excel("data/municipalities/t02.xls", skip = 6) |> 
@@ -381,9 +514,10 @@ read_ses_2013 <- function(url) {
 
 ## 2004 CBS periphery data
 
-Important to note that this is and old indicator, therefore since then some municipal jurisdiction changes have happened:
+Important to note that this is and old indicator, therefore since then
+some municipal jurisdiction changes have happened:
 
-```{r}
+``` r
 read_peri_2004 <- function() {
   df <- read_excel("data/indices/24_08_160t2.xls", skip = 7) 
   
@@ -406,9 +540,10 @@ read_peri_2004 <- function() {
 
 # Elections data
 
-This function reads the raw 2015 elections data file and adds a municipality id for every yishuv.
+This function reads the raw 2015 elections data file and adds a
+municipality id for every yishuv.
 
-```{r}
+``` r
 read_elect_muni <- function() {
   read_excel("data/elections/results_20.xls") |> 
     rename(yishuv_id = 2) |> 
@@ -417,9 +552,11 @@ read_elect_muni <- function() {
 }
 ```
 
-This function computes voting percentages for Likud and coalition parties in every municipality. It filters out NA values (like Beduin tribes). In 2015, there were no voting in Ein Kinya.
+This function computes voting percentages for Likud and coalition
+parties in every municipality. It filters out NA values (like Beduin
+tribes). In 2015, there were no voting in Ein Kinya.
 
-```{r}
+``` r
 read_elect_pct <- function() {
   
   read_elect_muni() |>  
@@ -458,8 +595,10 @@ read_elect_pct <- function() {
 
 ## Amutot
 
-This function reads every registered amuta from guidestar and returns its organiztion (tax) id and the name of its registered yishuv
-```{r}
+This function reads every registered amuta from guidestar and returns
+its organiztion (tax) id and the name of its registered yishuv
+
+``` r
 read_amutot <- function() {
   
   df_amutot_new <- read_excel("data/organizations/דוח חודשי גיידסטאר.xlsx", sheet = 2) |> 
@@ -493,7 +632,7 @@ read_amutot <- function() {
 
 ## Companies
 
-```{r}
+``` r
 read_companies <- function() {
   read_csv("data/organizations/companies.csv") |> 
     select(
@@ -510,7 +649,7 @@ read_companies <- function() {
 
 ## Municipalities
 
-```{r}
+``` r
 read_muni_names <- function() {
   read_muni_id(include_names = TRUE) |> 
     select(!c(edu_id, cbs_id)) |> 
@@ -520,9 +659,9 @@ read_muni_names <- function() {
 }
 ```
 
-
 ## Organiztions with no record
-```{r}
+
+``` r
 read_organizations_bad_names <- function() {
   tibble(
     tax_id = c(
@@ -583,10 +722,9 @@ read_organizations_bad_names <- function() {
 }
 ```
 
-
 ## Match yishuv id to organizations
 
-```{r}
+``` r
 read_organizations <- function() {
   bind_rows(
     read_amutot(),
@@ -600,14 +738,14 @@ read_organizations <- function() {
 }
 ```
 
-
 # Budget data
 
 ## Sela
 
-This function reads SELA budget by the ministry of culture from the years 2016-2019.
+This function reads SELA budget by the ministry of culture from the
+years 2016-2019.
 
-```{r}
+``` r
 read_sela_budget <- function() {
   
   read_excel("data/budget/תמיכות המשרד לגופי תרבות 2016-2019.xlsx", sheet = 39) |> 
@@ -644,9 +782,10 @@ read_sela_budget <- function() {
 
 ## Culture (total)
 
-This function reads the raw data from the Open Budget website of the ministry of culture, and summarizes it by year and organization.
+This function reads the raw data from the Open Budget website of the
+ministry of culture, and summarizes it by year and organization.
 
-```{r}
+``` r
 read_culture_budget <- function() {
   read_csv("data/budget/מינהל התרבות__ פירוט כל התמיכות מתקציב זה שאושרו ב כל השנים.csv") |> 
     select(
@@ -667,9 +806,10 @@ read_culture_budget <- function() {
 }
 ```
 
-This chunk checks which organizations that got budget from the ministry of culture do not appear in the current organizations data.
+This chunk checks which organizations that got budget from the ministry
+of culture do not appear in the current organizations data.
 
-```{r}
+``` r
 df_culture <- read_culture_budget() |> 
   left_join(read_organizations(), join_by(tax_id))
 
@@ -678,10 +818,14 @@ df_bad_names <- df_culture |>
   distinct(yishuv_name, .keep_all = TRUE)
 ```
 
+This function matches every organization supported by the ministry of
+culture with its municipality id. this leaves us with a municipality id
+for every budget support of the ministry of culture for every
+organization in every year. missing values include yishuvim not part of
+any municipality, like Mikveh Israel and the airport, and budgets that
+do not go to organiztions, mostly prizes for individuals.
 
-This function matches every organization supported by the ministry of culture with its municipality id. this leaves us with a municipality id for every budget support of the ministry of culture for every organization in every year. missing values include yishuvim not part of any municipality, like Mikveh Israel and the airport, and budgets that do not go to organiztions, mostly prizes for individuals.
-
-```{r}
+``` r
 add_culture_budget_muni_id <- function() {
   df_culture <- read_culture_budget() |> 
     left_join(read_organizations(), join_by(tax_id)) |> 
@@ -695,9 +839,10 @@ add_culture_budget_muni_id <- function() {
 }
 ```
 
-This function summarizes the cultural budget data by municipality and year.
+This function summarizes the cultural budget data by municipality and
+year.
 
-```{r}
+``` r
 culture_budget_by_muni <- function() {
   add_culture_budget_muni_id() |> 
     summarise(
@@ -710,17 +855,17 @@ culture_budget_by_muni <- function() {
 
 # CBS cluster data
 
-
-
 ## National priority settlements decided by the Israeli government
 
-Since the SELA budget relies also on national priority areas, these data are needed to be imported.
+Since the SELA budget relies also on national priority areas, these data
+are needed to be imported.
 
 ### Getting the list of tables from the national priority webpage
 
-This function reads the table data in the national priority areas government decision webpage, and returns a list of those tables.
+This function reads the table data in the national priority areas
+government decision webpage, and returns a list of those tables.
 
-```{r}
+``` r
 get_nat_pri_list <- function(){
   # nat_pri_url <- "https://www.gov.il/he/departments/policies/2013_des667"
   # 
@@ -737,14 +882,23 @@ get_nat_pri_list <- function(){
 ```
 
 ### Merging national priority yishuvim, subdistricts (Nafot) and yishuvim close to the border
-This function reads the tables from the previous section and manipulates them:
--   The nafot (subdistricts) data is added with the corresponding nafa_id column, and converts Hebrew data to logical.
--   The yishuvim declared as national priority are cleaned, added with a TRUE column and formats the yishuv_id.
--   The yishuvim declared as close to the border or threatened are cleaned, added with a TRUE column and formats the yishuv_id.
--   The whole yishuvim list is being called from the CBS website, and then all other three data frames are joined. NA's are replaced with FALSE, and a final national priority variable for each yishuv is calculated.
--   Finally, yishuvim with NA as municipality are filtered out, and a final national priority variable for each municipality is calculated as having either more than 75% of yishuvim in the municipality as national priority, or more than 50% of yishuvim in the municipality as close to the border or threatened.
 
-```{r}
+This function reads the tables from the previous section and manipulates
+them: - The nafot (subdistricts) data is added with the corresponding
+nafa_id column, and converts Hebrew data to logical. - The yishuvim
+declared as national priority are cleaned, added with a TRUE column and
+formats the yishuv_id. - The yishuvim declared as close to the border or
+threatened are cleaned, added with a TRUE column and formats the
+yishuv_id. - The whole yishuvim list is being called from the CBS
+website, and then all other three data frames are joined. NA’s are
+replaced with FALSE, and a final national priority variable for each
+yishuv is calculated. - Finally, yishuvim with NA as municipality are
+filtered out, and a final national priority variable for each
+municipality is calculated as having either more than 75% of yishuvim in
+the municipality as national priority, or more than 50% of yishuvim in
+the municipality as close to the border or threatened.
+
+``` r
 read_nat_pri_munis <- function(){
   
   pri_list <- get_nat_pri_list()
@@ -787,12 +941,11 @@ read_nat_pri_munis <- function(){
 }
 ```
 
-
 # Create a complete data frame
 
 ## Read population for every year
 
-```{r}
+``` r
 df_pop_args_old <- tribble(
   ~path, ~var_name, ~col_num_1, ~col_num_2, ~skip_rows, ~year,
   "",    "pop",     15,          30,         0,         2013,
@@ -821,7 +974,7 @@ df_pop <- bind_rows(
 
 ## Classify municipalities to sector (Jewish/Arab)
 
-```{r}
+``` r
 df_sector <- read_muni_new_var("data/municipalities/2019.xlsx", "arab_pct", 16) |> 
   mutate(
     arab_pct = as.numeric(str_replace(arab_pct, "-", "0")),
@@ -829,9 +982,10 @@ df_sector <- read_muni_new_var("data/municipalities/2019.xlsx", "arab_pct", 16) 
   ) |> 
   select(!arab_pct)
 ```
+
 ## Read periphery 2015 indices
 
-```{r}
+``` r
 df_peri_2015 <- read_muni_new("data/municipalities/2016.xlsx") |> 
   select(
     muni_id = 2,
@@ -842,10 +996,9 @@ df_peri_2015 <- read_muni_new("data/municipalities/2016.xlsx") |>
   )
 ```
 
-
 ## Combine all data frames
 
-```{r}
+``` r
 df <- expand_grid(
   year = 2013:2019,
   read_muni_id(id_types = "cbs", include_names = TRUE)
@@ -867,7 +1020,7 @@ df <- expand_grid(
 
 ## Recode and add variables
 
-```{r}
+``` r
 na_peri_muni <- c(
   "0483", # Bueina
   "0628", # Jat
@@ -891,7 +1044,7 @@ df <- df |>
 
 ## Top 10%
 
-```{r}
+``` r
 top_prop <- function(var, weights = 1, top_prop = 0.1) {
   tibble(x = var, w = weights) |> 
     uncount(w) |> 
@@ -904,7 +1057,7 @@ top_prop <- function(var, weights = 1, top_prop = 0.1) {
 
 ## Gini
 
-```{r}
+``` r
 gini_weighted <- function(var, weights) {
   tibble(x = var, w = weights) |> 
     uncount(w) |> 
@@ -915,7 +1068,7 @@ gini_weighted <- function(var, weights) {
 
 ## Total budget
 
-```{r}
+``` r
 df |> 
   summarise(
     .by = year,
@@ -936,13 +1089,11 @@ df |>
     x = "שנה",
     y = 'ש"ח'
   )
-
 ```
-
 
 ## Inequality calculation
 
-```{r}
+``` r
 df_gini <- df |> 
   summarise(
     .by = year,
@@ -957,7 +1108,7 @@ df_gini <- df |>
   )
 ```
 
-```{r}
+``` r
 df_ineq_sector <- df |> 
   summarise(
     .by = c(year, sector),
@@ -1026,10 +1177,9 @@ df_ineq_type <- df |>
   )
 ```
 
-
 ## Visualize
 
-```{r}
+``` r
 df_gini |> 
   pivot_longer(!year, names_to = "statistic", values_to = "value") |> 
     filter(statistic == "gini") |> 
@@ -1051,10 +1201,9 @@ df_gini |>
     x = "שנה",
     y = "ערך מדד ג'יני"
   )
-  
 ```
 
-```{r}
+``` r
 df_gini |> 
   pivot_longer(!year, names_to = "statistic", values_to = "value") |> 
   filter(statistic != "gini") |> 
@@ -1089,10 +1238,9 @@ df_gini |>
     x = "שנה",
     y = "חלקה של כל קבוצה מתוך תקציב מינהל תרבות"
   )
-  
 ```
 
-```{r}
+``` r
 df_ineq_sector |> 
   plot_line_group(sector, legend_labs = sector_labs) +
   theme(
@@ -1102,7 +1250,9 @@ df_ineq_sector |>
     x = "שנה",
     y = 'תקציב מינהל תרבות לתושב (ש"ח)'
   )
+```
 
+``` r
 df_ineq_type |> 
   plot_line_group(muni_type) +
   theme(
@@ -1112,7 +1262,9 @@ df_ineq_type |>
     x = "שנה",
     y = 'תקציב מינהל תרבות לתושב (ש"ח)'
   )
+```
 
+``` r
 df_ineq_ses_c |> 
   mutate(ses_2013_c = fct_reorder2(ses_2013_c, year, budget_per_capita)) |> 
   plot_line_group(ses_2013_c) +
@@ -1123,7 +1275,9 @@ df_ineq_ses_c |>
     x = "שנה",
     y = 'תקציב מינהל תרבות לתושב (ש"ח)'
   )
+```
 
+``` r
 df_ineq_peri_c |> 
   plot_line_group(peri_2015_c) +
   theme(
@@ -1135,7 +1289,7 @@ df_ineq_peri_c |>
   )
 ```
 
-```{r}
+``` r
 df_clusters |> 
   plot_line_group(cluster_value) +
   facet_wrap(
@@ -1153,13 +1307,11 @@ df_clusters |>
     x = "שנה",
     y = 'תקציב מינהל תרבות לתושב (ש"ח)'
   )
-  
 ```
-
 
 # Growth rate of budget by group
 
-```{r}
+``` r
 df_ineq_sector |> 
   summarise(
     .by = sector,
@@ -1180,7 +1332,9 @@ df_ineq_ses |>
   ) |> 
   ggplot(aes(ses_2013_c, added_budget_per_capita)) +
   geom_point()
+```
 
+``` r
 df_ineq_peri |> 
   summarise(
     .by = peri_2015_c,
@@ -1197,7 +1351,7 @@ df_ineq_peri |>
   geom_point()
 ```
 
-```{r}
+``` r
 df |> 
   summarise(
     .by = muni_name,
@@ -1210,13 +1364,11 @@ df |>
   geom_smooth(se = FALSE)
 ```
 
-
-
 # Sela Analysis
 
 ## Sela 2018 eligibility
 
-```{r}
+``` r
 df_2018 <- df |> 
   filter(year == 2018) |> 
   left_join(df |> filter(year == 2015) |> select(muni_id, pop_2015 = pop), join_by(muni_id))
@@ -1224,9 +1376,12 @@ df_2018 <- df |>
 
 ### Festival eligibility
 
-The population year determined to use to decide eligibility is 2015. using 2018 created some municipalities that changed population category between the years. the 2015 year was the latest available during the start of 2018.
+The population year determined to use to decide eligibility is 2015.
+using 2018 created some municipalities that changed population category
+between the years. the 2015 year was the latest available during the
+start of 2018.
 
-```{r}
+``` r
 df_2018 <- df_2018 |> 
   mutate(
     is_elig_fest = case_when(
@@ -1248,9 +1403,14 @@ df_2018 <- df_2018 |>
 
 ### Initiatives eligibility
 
-The eligibility score of each municipality is calculated: first  the score is calculated according the the regulations. the score is normalized between all eligible municipalities and then multiplied by a number close to the total budget allocated. the specific number was decided through trial and error to match the vast majority of municipalities. 
+The eligibility score of each municipality is calculated: first the
+score is calculated according the the regulations. the score is
+normalized between all eligible municipalities and then multiplied by a
+number close to the total budget allocated. the specific number was
+decided through trial and error to match the vast majority of
+municipalities.
 
-```{r}
+``` r
 df_2018 <- df_2018 |> 
   mutate(
     score_elig_init = case_when(
@@ -1274,11 +1434,11 @@ df_2018 <- df_2018 |>
   )
 ```
 
-
 ## Modelling Sela budget
 
 ### Check distribution of dependant variable
-```{r}
+
+``` r
 df_2018 |> 
   ggplot(aes(budget_elig_tot)) +
   geom_histogram() +
@@ -1288,7 +1448,9 @@ df_2018 |>
     x = 'גובה הזכאות של רשות מקומית לתמיכה תקציבית של תקנת סל"ע בשנת 2018 (ש"ח)',
     y = "מספר רשויות"
   )
-  
+```
+
+``` r
 df_2018 |> 
   summarise(
     mean = mean(budget_elig_tot),
@@ -1299,7 +1461,8 @@ df_2018 |>
 ```
 
 ### Distribution table of all variables
-```{r}
+
+``` r
 df_2018 |> 
   select(
     budget_elig_tot,
@@ -1314,9 +1477,9 @@ df_2018 |>
   )
 ```
 
-
 ### Model with Likud voting percent
-```{r}
+
+``` r
 sela_mdl2 <- lm(budget_elig_tot ~ sector * elec_likud_pct, data = df_2018)
 
 sela_mdl2 %>% 
@@ -1331,10 +1494,11 @@ sela_mdl2 %>%
   geom_line(aes(y = .fitted)) +
   geom_point()
 ```
-This shows a good relationship so that jewish municipalities are receiveing more budget as the Likud voting percent rises.
 
+This shows a good relationship so that jewish municipalities are
+receiveing more budget as the Likud voting percent rises.
 
-```{r}
+``` r
 sela_mdl3 <- lm(budget_elig_tot ~ sector : elec_likud_pct + pop_2015 + ses_2013_c + peri_2004_c, data = df_2018)
 sela_mdl3_control <- lm(budget_elig_tot ~ pop_2015 + ses_2013_c + peri_2004_c, data = df_2018)
 sela_mdl3_control2 <- lm(budget_elig_tot ~ pop_2015 + ses_2013_c + peri_2004_c + is_nat_pri, data = df_2018)
@@ -1357,7 +1521,9 @@ sela_mdl3 %>%
   ggplot(aes(elec_likud_pct, budget_elig_tot, color = sector)) + 
   geom_line(aes(y = .fitted)) +
   geom_point()
+```
 
+``` r
 sela_mdl3 %>% 
   augment() %>% 
   ggplot(aes(elec_likud_pct, .fitted - sela_mdl3_control %>% augment() %>% pull(.fitted), color = sector)) + 
@@ -1365,10 +1531,14 @@ sela_mdl3 %>%
   geom_point() +
   geom_smooth(method = "lm", se = FALSE)
 ```
-The model is still significant for Likud voting percentage after adding control variables.
 
-Let's create a better plot for the last plot of the difference between the two models.
-```{r}
+The model is still significant for Likud voting percentage after adding
+control variables.
+
+Let’s create a better plot for the last plot of the difference between
+the two models.
+
+``` r
 sela_mdl3 %>% 
   augment() %>% 
   ggplot(aes(
@@ -1390,13 +1560,11 @@ sela_mdl3 %>%
     color = "מגזר",
     shape = "מגזר"
   )
-
 ```
 
+Let’s put the two models in a table.
 
-Let's put the two models in a table.
-
-```{r}
+``` r
 tbl_merge(
   list(
     tbl_regression(
@@ -1435,8 +1603,9 @@ tbl_merge(
 
 ### Check model outcomes
 
-Let's check the distribution of voting to Likud across SES clusters.
-```{r}
+Let’s check the distribution of voting to Likud across SES clusters.
+
+``` r
 elec_more_df <- df %>% 
   mutate(
     likud_votes = elec_good_votes * (elec_likud_pct / 100),
@@ -1462,10 +1631,10 @@ elec_more_df %>%
   )
 ```
 
+Since SES cluster 7 had special criteria, Let’s look at the Likud voting
+patterns within them.
 
-Since SES cluster 7 had special criteria, Let's look at the Likud voting patterns within them.
-
-```{r}
+``` r
 ses_7_df <- elec_more_df %>% 
   filter(ses_2013_c == "7")
 
@@ -1489,7 +1658,9 @@ ses_7_df %>%
     x = "אזור עדיפות לאומית",
     y = "אחוז הצבעה לליכוד"
   )
+```
 
+``` r
 # by a simple mean and not total mean
 ses_7_df %>% 
   group_by(is_nat_pri) %>% 
@@ -1508,7 +1679,9 @@ ses_7_df %>%
     x = "אזור עדיפות לאומית",
     y = "אחוז הצבעה לליכוד"
   )
+```
 
+``` r
 # by eligibility criterea for initiatives
 elec_more_df %>% 
   filter(ses_2013_c %in% c("7", "8", "9", "10")) %>% 
@@ -1535,7 +1708,7 @@ elec_more_df %>%
 
 ### Function for calculating eligibilty by SES cluster
 
-```{r}
+``` r
 calc_eligibility <- function(data, cluster) {
   data |> 
     mutate( # Festivals eligibility
@@ -1579,7 +1752,7 @@ calc_eligibility <- function(data, cluster) {
 
 ### Function for modeling by cluster
 
-```{r}
+``` r
 model_sela <- function(data) {
   sela_mdl <- lm(budget_elig_tot ~ sector : elec_likud_pct + pop_2015 + ses_2013_c + peri_2004_c, data = data)
   sela_mdl_control <- lm(budget_elig_tot ~ pop_2015 + ses_2013_c + peri_2004_c, data = data)
@@ -1614,7 +1787,7 @@ model_sela <- function(data) {
 
 ### Create data frame for model by SES cluster threshhold
 
-```{r}
+``` r
 df_sela_mdl <- map2(list(df_2018), 1:10, calc_eligibility) |> 
   map(model_sela) |> 
   list_rbind() |> 
@@ -1632,7 +1805,7 @@ df_sela_mdl <- map2(list(df_2018), 1:10, calc_eligibility) |>
 df_sela_mdl
 ```
 
-```{r}
+``` r
 df_sela_mdl |> 
   mutate(to_highlight = if_else(cluster == 6, "yes", "no")) |> 
   ggplot(aes(cluster, b_effect, label = str_c(p_effect_ast, comma(b_effect)), fill = to_highlight)) +
@@ -1650,9 +1823,5 @@ df_sela_mdl |>
     caption = "* p < 0.1, ** p < 0.01, *** p < 0.001"
   )
 ```
+
 ## Checking budget per Likud voter
-
-```{r}
-
-```
-
