@@ -190,8 +190,8 @@ plot_line_group <- function(data, group, x = year, y = budget_per_capita, legend
     geom_line(linewidth = 1) +
     geom_point(size = 3) +
     geom_text(
-      data = data |> 
-        filter(year %in% c(max_x, min_x)),
+      # data = data |> 
+      #   filter(year %in% c(max_x, min_x)),
       aes(label = round({{ y }}, digits = 1)),
       vjust = -1,
       show.legend = FALSE
@@ -1071,9 +1071,6 @@ df_gini |>
   geom_line(linewidth = 1) +
   geom_point(size = 3) +
   geom_text(
-    data = df_gini |> 
-      pivot_longer(!year, names_to = "statistic", values_to = "value") |> 
-      filter(statistic == "gini", year %in% c(2014,2019)),
     aes(label = round(value, 3)),
     vjust = -1
   ) +
@@ -1096,9 +1093,6 @@ df_gini |>
   geom_line(linewidth = 1) +
   geom_point(size = 3) +
   geom_text(
-    data = df_gini |> 
-      pivot_longer(!year, names_to = "statistic", values_to = "value") |> 
-      filter(statistic != "gini", year %in% c(2014,2019)),
     aes(label = percent(value, 0.1)),
     vjust = -1,
     show.legend = FALSE
