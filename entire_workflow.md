@@ -91,7 +91,9 @@
     budget](#total-budget)
   - [<span class="toc-section-number">9.4</span> Inequality
     calculation](#inequality-calculation)
-  - [<span class="toc-section-number">9.5</span> Visualize](#visualize)
+  - [<span class="toc-section-number">9.5</span> Elephant
+    curve](#elephant-curve)
+  - [<span class="toc-section-number">9.6</span> Visualize](#visualize)
 - [<span class="toc-section-number">10</span> Growth rate of budget by
   group](#growth-rate-of-budget-by-group)
 - [<span class="toc-section-number">11</span> Sela
@@ -123,8 +125,14 @@
     - [<span class="toc-section-number">11.3.3</span> Create data frame
       for model by SES cluster
       threshhold](#create-data-frame-for-model-by-ses-cluster-threshhold)
-  - [<span class="toc-section-number">11.4</span> Checking budget per
-    Likud voter](#checking-budget-per-likud-voter)
+  - [<span class="toc-section-number">11.4</span> Analyzing SELA effect
+    on inequality](#analyzing-sela-effect-on-inequality)
+    - [<span class="toc-section-number">11.4.1</span> Calculating
+      hypothetical SELA budget by 2014
+      distribution](#calculating-hypothetical-sela-budget-by-2014-distribution)
+    - [<span class="toc-section-number">11.4.2</span> Visualizing the
+      hypothetical culture budget
+      inequality](#visualizing-the-hypothetical-culture-budget-inequality)
 
 # Setup
 
@@ -143,6 +151,7 @@ library(gtsummary)
 library(tidymodels)
 library(rtlr)
 library(extrafont)
+library(ggrepel)
 # library(rvest)
 # locale("he")
 ```
@@ -169,7 +178,11 @@ decile_labs <- c(
 sector_labs <- c(
   "רשויות עם רוב יהודי",
   "רשויות עם רוב ערבי"
-  
+)
+
+hypo_labs <- c(
+  "ערך מדד היפותטי",
+  "ערך מדד בפועל"
 )
 ```
 
@@ -318,8 +331,8 @@ plot_line_group <- function(data, group, x = year, y = budget_per_capita, legend
     geom_line(linewidth = 1) +
     geom_point(size = 3) +
     geom_text(
-      data = data |> 
-        filter(year %in% c(max_x, min_x)),
+      # data = data |> 
+      #   filter(year %in% c(max_x, min_x)),
       aes(label = round({{ y }}, digits = 1)),
       vjust = -1,
       show.legend = FALSE
@@ -329,6 +342,35 @@ plot_line_group <- function(data, group, x = year, y = budget_per_capita, legend
     scale_color_discrete(labels = legend_labs) +
     scale_shape_discrete(labels = legend_labs) +
      theme(
+      legend.title= element_blank(),
+      legend.background = element_rect(fill = "white", color = "black")
+    )
+}
+```
+
+``` r
+plot_line_group_hypo <- function(data, group, x = year, y = budget_per_capita, is_hypo = type, legend_labs = waiver()) {
+  min_x <- min(data |> pull({{ x }}))
+  max_x <- max(data |> pull({{ x }}))
+  
+  data |> 
+    mutate({{ group }} := fct_reorder2({{ group }}, {{ x }}, {{ y }})) |> 
+    ggplot(aes({{ x }}, {{ y }}, color = {{ group }}, shape = {{ group }}, linetype = {{ is_hypo }})) +
+    geom_line(linewidth = 1) +
+    geom_point(size = 3) +
+    geom_text_repel(
+      aes(label = if_else( {{ x }} > 2015 | {{ is_hypo }} == "real", as.character(round({{ y }}, digits = 1)), "")),
+      vjust = -1,
+      show.legend = FALSE,
+      direction = "y",
+      segment.alpha = 0
+    ) +
+    scale_x_continuous(breaks = min_x:max_x) +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.1)), limits = c(0, NA)) +
+    scale_color_discrete(labels = legend_labs) +
+    scale_shape_discrete(labels = legend_labs) +
+    scale_linetype_manual(values = c("real" = 1, "hypo" = 3), labels = hypo_labs) +
+    theme(
       legend.title= element_blank(),
       legend.background = element_rect(fill = "white", color = "black")
     )
@@ -1177,6 +1219,43 @@ df_ineq_type <- df |>
   )
 ```
 
+## Elephant curve
+
+``` r
+percentile_sum <- function(var, weights = 1) {
+  tibble(x = var, w = weights) |> 
+    uncount(w) |> 
+    arrange(desc(x)) |> 
+    mutate(
+      percentile = ceiling((length(x):1) * 100 / length(x))
+    ) |> 
+    summarise(
+      .by = percentile,
+      percentile_sum = sum(x)
+    ) |> 
+    pull(percentile_sum)
+}
+```
+
+``` r
+percentile_sum_df <- function(data, year) {
+  data |> 
+    filter(year == {{ year }}) |> 
+    reframe("budget_{{year}}" := percentile_sum(budget_approved_culture_per_capita, weights = pop)) |> 
+    mutate(percentile = 100:1, .before = 1)
+}
+```
+
+``` r
+df_elephant <- df |> 
+  percentile_sum_df(2013) |> 
+  left_join(df |> percentile_sum_df(2018), join_by(percentile)) |> 
+  mutate(
+    growth_rate = budget_2018 / budget_2013 - 1,
+    growth_difference = budget_2018 - budget_2013
+  )
+```
+
 ## Visualize
 
 ``` r
@@ -1187,9 +1266,6 @@ df_gini |>
   geom_line(linewidth = 1) +
   geom_point(size = 3) +
   geom_text(
-    data = df_gini |> 
-      pivot_longer(!year, names_to = "statistic", values_to = "value") |> 
-      filter(statistic == "gini", year %in% c(2014,2019)),
     aes(label = round(value, 3)),
     vjust = -1
   ) +
@@ -1211,16 +1287,14 @@ df_gini |>
   geom_line(linewidth = 1) +
   geom_point(size = 3) +
   geom_text(
-    data = df_gini |> 
-      pivot_longer(!year, names_to = "statistic", values_to = "value") |> 
-      filter(statistic != "gini", year %in% c(2014,2019)),
     aes(label = percent(value, 0.1)),
     vjust = -1,
     show.legend = FALSE
   ) +
   scale_y_continuous(
     labels = label_percent(),
-    expand = expansion(mult = c(0, 0.1))
+    expand = expansion(mult = c(0, 0.1)),
+    limits = c(0, NA)
   ) +
   scale_x_continuous(breaks = 2013:2019) +
   scale_color_discrete(labels = decile_labs) +
@@ -1307,6 +1381,20 @@ df_clusters |>
     x = "שנה",
     y = 'תקציב מינהל תרבות לתושב (ש"ח)'
   )
+```
+
+``` r
+df_elephant |> 
+  ggplot(aes(percentile, growth_rate)) +
+  geom_point() +
+  geom_line()
+```
+
+``` r
+df_elephant |> 
+  ggplot(aes(percentile, growth_difference)) +
+  geom_point() +
+  geom_line()
 ```
 
 # Growth rate of budget by group
@@ -1824,4 +1912,206 @@ df_sela_mdl |>
   )
 ```
 
-## Checking budget per Likud voter
+## Analyzing SELA effect on inequality
+
+### Calculating hypothetical SELA budget by 2014 distribution
+
+``` r
+df <- df |> 
+  filter(year == 2014) |>
+  mutate(
+    # Percent of total 2014 culture budget going to this municipality
+    budget_approved_culture_2014_pct = budget_approved_culture / sum(budget_approved_culture)
+  ) |> 
+  select(muni_id, budget_approved_culture_2014_pct) |> 
+  right_join(df, join_by(muni_id)) |> 
+  relocate(budget_approved_culture_2014_pct, .after = last_col()) |> 
+  mutate(
+    .by = year,
+    # The hypothetical SELA budget that would be going to the municipality if the budget was distributed by the 2014 distribution
+    budget_approved_sela_hypo = sum(budget_approved_sela) * budget_approved_culture_2014_pct
+  ) |> 
+  mutate(
+    # The hypothetical total culture budget that would be going to the municipality if the SELA budget was distributed by the 2014 total culture budget distribution
+    budget_approved_culture_hypo = budget_approved_culture - budget_approved_sela + budget_approved_sela_hypo,
+    budget_approved_culture_hypo_per_capita = budget_approved_culture_hypo / pop
+  )
+```
+
+### Visualizing the hypothetical culture budget inequality
+
+#### GINI
+
+``` r
+df_gini_2 <- df |> 
+  summarise(
+    .by = year,
+    gini_real = gini_weighted(budget_approved_culture_per_capita, weights = as.integer(pop)),
+    gini_hypo = gini_weighted(budget_approved_culture_hypo_per_capita, weights = as.integer(pop)),
+    top10_pct_real = top_prop(budget_approved_culture_per_capita, weights = as.integer(pop), top_prop = 0.1),
+    top10_pct_hypo = top_prop(budget_approved_culture_hypo_per_capita, weights = as.integer(pop), top_prop = 0.1),
+    bot50_pct_real = 1 - top_prop(budget_approved_culture_per_capita, weights = as.integer(pop), top_prop = 0.5),
+    bot50_pct_hypo = 1 - top_prop(budget_approved_culture_hypo_per_capita, weights = as.integer(pop), top_prop = 0.5),
+    mid50_90_pct_real = 1 - top10_pct_real - bot50_pct_real,
+    mid50_90_pct_hypo = 1 - top10_pct_hypo - bot50_pct_hypo
+  )
+```
+
+``` r
+df_gini_2 |> 
+  pivot_longer(!year, names_to = "statistic", values_to = "value") |> 
+    filter(str_detect(statistic, "gini")) |> 
+  ggplot(aes(year, value, linetype = statistic)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 3) +
+  geom_text(
+    aes(label = round(value, 3)),
+    vjust = -1
+  ) +
+  scale_y_continuous(
+    expand = expansion(mult = c(0.1, 0.1))
+  ) +
+  scale_x_continuous(breaks = 2013:2019) +
+  scale_linetype_manual(values = c("gini_real" = 1, "gini_hypo" = 3), labels = hypo_labs) +
+  theme(
+    legend.title= element_blank(),
+    legend.position = c(0.25, 0.3),
+    legend.background = element_rect(fill = "white", color = "black")
+  ) +
+  labs(
+    x = "שנה",
+    y = "ערך מדד ג'יני"
+  )
+```
+
+#### Top 10%
+
+``` r
+df_gini_2 |> 
+  pivot_longer(!year, names_to = c("statistic", "type"), values_to = "value", names_sep = -5) |> 
+  mutate(type = str_remove(type, "_")) |> 
+  filter(!str_detect(statistic, "gini")) |> 
+  ggplot(aes(year, value, color = statistic, shape = statistic, linetype = type)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 3) +
+  geom_text_repel(
+    aes(label = if_else(year > 2015 | type == "real", percent(value, 0.1), "")),
+    vjust = -1,
+    show.legend = FALSE,
+    direction = "y"
+  ) +
+  scale_y_continuous(
+    labels = label_percent(),
+    expand = expansion(mult = c(0, 0.1)),
+    limits = c(0, NA)
+  ) +
+  scale_x_continuous(breaks = 2013:2019) +
+  scale_color_discrete(labels = decile_labs) +
+  scale_shape_discrete(labels = decile_labs) +
+  scale_linetype_manual(values = c("real" = 1, "hypo" = 3), labels = hypo_labs) +
+  guides(
+    color = guide_legend(reverse = TRUE),
+    shape = guide_legend(reverse = TRUE)
+  ) +
+  theme(
+    legend.title= element_blank(),
+    legend.position = c(0.45, 0.32),
+    legend.background = element_rect(fill = "white", color = "black"),
+    legend.box = "horizontal"
+  ) +
+    labs(
+    x = "שנה",
+    y = "חלקה של כל קבוצה מתוך תקציב מינהל תרבות"
+  )
+```
+
+#### Index calculation
+
+``` r
+df_ineq_sector_hypo <- df |> 
+  summarise(
+    .by = c(year, sector),
+    budget_per_capita_real = sum(budget_approved_culture) / sum(pop),
+    budget_per_capita_hypo = sum(budget_approved_culture_hypo) / sum(pop)
+  ) |> 
+  pivot_longer(!c(year, sector), names_to = c("statistic", "type"), values_to = "value", names_sep = -5) |> 
+  mutate(type = str_remove(type, "_")) |> 
+  rename(budget_per_capita = value)
+
+df_ineq_type_hypo <- df |> 
+  summarise(
+    .by = c(year, muni_type),
+    budget_per_capita_real = sum(budget_approved_culture) / sum(pop),
+    budget_per_capita_hypo = sum(budget_approved_culture_hypo) / sum(pop)
+  ) |> 
+  pivot_longer(!c(year, muni_type), names_to = c("statistic", "type"), values_to = "value", names_sep = -5) |> 
+  mutate(type = str_remove(type, "_")) |> 
+  rename(budget_per_capita = value)
+
+df_clusters_hypo <- df |> 
+  pivot_longer(c(ses_2013_c, peri_2015_c), names_to = "cluster_type", values_to = "cluster_value") |> 
+  mutate(
+    cluster_value = fct_collapse(
+      factor(cluster_value),
+      `אשכולות 1-3` = c("1", "2", "3"),
+      `אשכולות 4-6` = c("4", "5", "6"),
+      `אשכולות 7-10` = c("7", "8", "9", "10")
+    )
+  ) |> 
+  summarise(
+    .by = c(year, cluster_type, cluster_value),
+    budget_per_capita_real = sum(budget_approved_culture) / sum(pop),
+    budget_per_capita_hypo = sum(budget_approved_culture_hypo) / sum(pop)
+  ) |> 
+  pivot_longer(!c(year, cluster_type, cluster_value), names_to = c("statistic", "type"), values_to = "value", names_sep = -5) |> 
+  mutate(type = str_remove(type, "_")) |> 
+  rename(budget_per_capita = value)
+```
+
+#### Index visualization
+
+``` r
+df_ineq_sector_hypo |> 
+  plot_line_group_hypo(sector, legend_labs = sector_labs) +
+  theme(
+    legend.position = c(0.20, 0.45)
+  ) +
+  labs(
+    x = "שנה",
+    y = 'תקציב מינהל תרבות לתושב (ש"ח)'
+  )
+```
+
+``` r
+df_ineq_type_hypo |> 
+  plot_line_group_hypo(muni_type) +
+  theme(
+    legend.position = c(0.25, 0.35),
+    legend.box = "horizontal"
+  ) +
+  labs(
+    x = "שנה",
+    y = 'תקציב מינהל תרבות לתושב (ש"ח)'
+  )
+```
+
+``` r
+df_clusters_hypo |> 
+  plot_line_group_hypo(cluster_value) +
+  facet_wrap(
+    ~ cluster_type,
+    labeller = labeller(cluster_type = c(
+      peri_2015_c = str_rtl("אשכול פריפריאליות (2015)"),
+      ses_2013_c = str_rtl("אשכול חברתי-כלכלי (2013)"))
+    )
+  ) +
+  scale_x_continuous(expand = expansion(mult = c(0.1, 0.1))) +
+  theme(
+    legend.position = c(0.8, 0.1),
+    legend.box = "horizontal"
+  ) +
+  labs(
+    x = "שנה",
+    y = 'תקציב מינהל תרבות לתושב (ש"ח)'
+  )
+```
