@@ -959,11 +959,23 @@ df |>
   ggplot(aes(year, value)) +
   geom_line() +
   geom_point() +
+  geom_text(
+    aes(label = if_else(value < 1e6, as.character(round(value, 1)), paste0(round(value / 1e6, 0), "M"))),
+    vjust = -1
+  ) +
   facet_wrap(~ var, scales = "free_y", labeller = labeller(var = c(budget_per_capita = "תקציב מינהל תרבות לתושב", budget_tot = "תקציב מינהל תרבות כולל"))) +
   scale_y_continuous(
-    labels = label_comma(),
+    labels = label_number(scale_cut = cut_short_scale()),
     limits = c(0, NA),
     expand = expansion(mult = c(0, 0.1))
+  ) +
+  scale_x_continuous(
+    breaks = 2013:2019,
+    labels = 2013:2019,
+    expand = expansion(mult = c(0.1, 0.1))
+  ) +
+  theme(
+    panel.grid.minor.x = element_blank()
   ) +
   labs(
     x = "שנה",
