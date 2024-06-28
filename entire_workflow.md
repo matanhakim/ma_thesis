@@ -1121,11 +1121,23 @@ df |>
   ggplot(aes(year, value)) +
   geom_line() +
   geom_point() +
+  geom_text(
+    aes(label = if_else(value < 1e6, as.character(round(value, 1)), paste0(round(value / 1e6, 0), "M"))),
+    vjust = -1
+  ) +
   facet_wrap(~ var, scales = "free_y", labeller = labeller(var = c(budget_per_capita = "תקציב מינהל תרבות לתושב", budget_tot = "תקציב מינהל תרבות כולל"))) +
   scale_y_continuous(
-    labels = label_comma(),
+    labels = label_number(scale_cut = cut_short_scale()),
     limits = c(0, NA),
     expand = expansion(mult = c(0, 0.1))
+  ) +
+  scale_x_continuous(
+    breaks = 2013:2019,
+    labels = 2013:2019,
+    expand = expansion(mult = c(0.1, 0.1))
+  ) +
+  theme(
+    panel.grid.minor.x = element_blank()
   ) +
   labs(
     x = "שנה",
@@ -1918,18 +1930,11 @@ df_sela_mdl |>
 
 ``` r
 df <- df |> 
-  filter(year == 2014) |>
-  mutate(
-    # Percent of total 2014 culture budget going to this municipality
-    budget_approved_culture_2014_pct = budget_approved_culture / sum(budget_approved_culture)
-  ) |> 
-  select(muni_id, budget_approved_culture_2014_pct) |> 
-  right_join(df, join_by(muni_id)) |> 
-  relocate(budget_approved_culture_2014_pct, .after = last_col()) |> 
   mutate(
     .by = year,
-    # The hypothetical SELA budget that would be going to the municipality if the budget was distributed by the 2014 distribution
-    budget_approved_sela_hypo = sum(budget_approved_sela) * budget_approved_culture_2014_pct
+    # The hypothetical SELA budget that would be going to the municipality if the budget was distributed by the the culture budget distribution that year
+    budget_approved_culture_pct = (budget_approved_culture - budget_approved_sela) / sum(budget_approved_culture - budget_approved_sela),
+    budget_approved_sela_hypo = sum(budget_approved_sela) * budget_approved_culture_pct
   ) |> 
   mutate(
     # The hypothetical total culture budget that would be going to the municipality if the SELA budget was distributed by the 2014 total culture budget distribution
