@@ -184,6 +184,12 @@ hypo_labs <- c(
   "ערך מדד היפותטי",
   "ערך מדד בפועל"
 )
+
+muni_type_colors <- c(
+  "עירייה" = "#F8766D",
+  "מועצה אזורית" = "#00BA38",
+  "מועצה מקומית" = "#619CFF"
+)
 ```
 
 # Utility functions
@@ -1542,7 +1548,6 @@ df_2018 <- df_2018 |>
 df_2018 |> 
   ggplot(aes(budget_elig_tot)) +
   geom_histogram() +
-  theme_minimal() +
   scale_x_continuous(labels = label_comma()) +
   labs(
     x = 'גובה הזכאות של רשות מקומית לתמיכה תקציבית של תקנת סל"ע בשנת 2018 (ש"ח)',
@@ -1944,6 +1949,39 @@ df <- df |>
 ```
 
 ### Visualizing the hypothetical culture budget inequality
+
+``` r
+df |> 
+  filter(year >= 2016) |> 
+  pivot_longer(c(budget_approved_culture_per_capita, budget_approved_culture_hypo_per_capita), names_to = "statistic", values_to = "value") |> 
+  ggplot(aes(log10(value + 1), color = statistic)) + 
+  geom_density()
+```
+
+``` r
+df |> 
+  mutate(muni_type = fct_relevel(muni_type, "עירייה", "מועצה אזורית", "מועצה מקומית")) |>
+  filter(year == 2018) |> 
+  ggplot(aes(log10(budget_approved_culture_per_capita + 0.1), log10(budget_approved_culture_hypo_per_capita + 0.1), size = pop, color = muni_type)) +
+  geom_point(alpha = 0.5) +
+  geom_abline() + 
+  scale_x_continuous(breaks = -1:3, labels = 10 ^ (-1:3)) +
+  scale_y_continuous(breaks = -1:3, labels = 10 ^ (-1:3)) +
+  scale_color_manual(values = muni_type_colors) +
+   guides(
+    color = guide_legend(override.aes = list(size = 3), title = "סוג רשות מקומית"),
+    size = guide_legend(title = "אוכלוסייה")
+  ) +
+  theme(
+    legend.position = c(0.2, 0.8),
+    legend.background = element_rect(fill = "white", color = "black"),
+    legend.box = "horizontal"
+  ) +
+  labs(
+    x = str_rtl('תקציב תרבות בפועל לתושב (ש"ח, סולם לוגריתמי)'),
+    y= str_rtl('תקציב תרבות היפותטי לתושב  (ש"ח, סולם לוגריתמי)')
+  )
+```
 
 #### GINI
 

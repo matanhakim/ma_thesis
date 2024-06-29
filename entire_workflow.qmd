@@ -61,6 +61,12 @@ hypo_labs <- c(
   "ערך מדד היפותטי",
   "ערך מדד בפועל"
 )
+
+muni_type_colors <- c(
+  "עירייה" = "#F8766D",
+  "מועצה אזורית" = "#00BA38",
+  "מועצה מקומית" = "#619CFF"
+)
 ```
 
 # Utility functions
@@ -1771,14 +1777,16 @@ df |>
 
 ```{r}
 df |> 
+  mutate(muni_type = fct_relevel(muni_type, "עירייה", "מועצה אזורית", "מועצה מקומית")) |>
   filter(year == 2018) |> 
   ggplot(aes(log10(budget_approved_culture_per_capita + 0.1), log10(budget_approved_culture_hypo_per_capita + 0.1), size = pop, color = muni_type)) +
   geom_point(alpha = 0.5) +
   geom_abline() + 
   scale_x_continuous(breaks = -1:3, labels = 10 ^ (-1:3)) +
   scale_y_continuous(breaks = -1:3, labels = 10 ^ (-1:3)) +
+  scale_color_manual(values = muni_type_colors) +
    guides(
-    color = guide_legend(reverse = TRUE, override.aes = list(size = 3), title = "סוג רשות מקומית"),
+    color = guide_legend(override.aes = list(size = 3), title = "סוג רשות מקומית"),
     size = guide_legend(title = "אוכלוסייה")
   ) +
   theme(
