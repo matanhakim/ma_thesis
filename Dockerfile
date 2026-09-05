@@ -13,12 +13,12 @@ FROM rocker/r-ver:4.5.2
 ARG QUARTO_VERSION=1.8.27
 
 # System libraries needed by the R packages (curl, xml2, ragg, textshaping,
-# readxl) and the Culmus Hebrew fonts (David CLM replaces David).
+# readxl, pdftools) and Noto as a fallback Hebrew typeface.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     fontconfig \
-    fonts-culmus \
+    fonts-noto-core \
     libcairo2-dev \
     libcurl4-openssl-dev \
     libfontconfig1-dev \
@@ -32,7 +32,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libtiff5-dev \
     libxml2-dev \
     zlib1g-dev \
-  && rm -rf /var/lib/apt/lists/* \
+  && rm -rf /var/lib/apt/lists/*
+
+# The Culmus Hebrew fonts: David CLM stands in for David, the typeface of the
+# thesis. Ubuntu 24.04 no longer packages them, so they come from the upstream
+# release (pinned version).
+ARG CULMUS_VERSION=0.133
+RUN mkdir -p /usr/share/fonts/culmus \
+  && curl -fsSL -o /tmp/culmus.tar.gz \
+      "https://downloads.sourceforge.net/project/culmus/culmus/${CULMUS_VERSION}/culmus-${CULMUS_VERSION}.tar.gz" \
+  && tar -xzf /tmp/culmus.tar.gz -C /tmp \
+  && cp /tmp/culmus-${CULMUS_VERSION}/*.otf /tmp/culmus-${CULMUS_VERSION}/*.ttf /usr/share/fonts/culmus/ \
+  && rm -rf /tmp/culmus* \
   && fc-cache -f
 
 # Quarto (bundles Pandoc and Typst).
