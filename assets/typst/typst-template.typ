@@ -96,6 +96,9 @@
   }
 }
 
+// Tables are set in 10 pt, as in the submitted thesis.
+#show table: set text(size: 10pt)
+#show table: set par(first-line-indent: 0pt, leading: 0.6em)
 #set table(
   inset: 6pt,
   stroke: none

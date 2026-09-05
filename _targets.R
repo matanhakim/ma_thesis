@@ -14,7 +14,7 @@ library(tarchetypes)
 tar_option_set(
   packages = c(
     "dplyr", "tidyr", "purrr", "stringr", "readr", "readxl", "forcats",
-    "tibble", "il.cbs.muni", "reldist", "broom"
+    "tibble", "il.cbs.muni", "broom"
   ),
   format = "rds"
 )

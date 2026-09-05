@@ -7,11 +7,24 @@
 
 #' Population-weighted Gini coefficient
 #'
+#' Twice the area between the line of equality and the Lorenz curve, with
+#' the Lorenz curve drawn through the cumulative population shares
+#' (trapezoidal rule). This is the estimator of `reldist::gini()`, which the
+#' thesis used; it is reimplemented here to avoid that package's heavy
+#' dependencies. Weights can be any positive numbers.
+#'
 #' @param x Numeric vector of values (budget per capita).
 #' @param w Numeric vector of weights (population).
 #' @return A number between 0 and 1.
 gini_weighted <- function(x, w) {
-  reldist::gini(x, weights = w)
+  ord <- order(x)
+  x <- x[ord]
+  w <- w[ord] / sum(w)
+  p <- cumsum(w) # cumulative share of the population
+  nu <- cumsum(w * x) # cumulative share of the total
+  nu <- nu / nu[length(nu)]
+  n <- length(nu)
+  sum(nu[-1] * p[-n]) - sum(nu[-n] * p[-1])
 }
 
 #' Share of the total held by the top `prop` of the weighted population

@@ -81,3 +81,8 @@ submitted; the author may wish to treat them as errata.
   images cropped from the submitted PDF, not regenerated.
 * The lists of figures and tables of the Word output are Word fields, filled
   in when the document is opened (Word asks to update fields).
+* In the PDF, the footnote attached to the caption of Figure 1 is also
+  printed under the list of figures, where Typst repeats the caption.
+* Tables are set in 10 pt in the PDF and the Word file, as in the submitted
+  thesis; Table 4 (the regression models) reads left to right in all formats,
+  as in the submitted thesis, while the other tables read right to left.
