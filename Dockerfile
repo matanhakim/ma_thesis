@@ -56,14 +56,16 @@ RUN curl -fsSL -o /tmp/quarto.deb \
 
 WORKDIR /thesis
 
-# Restore the exact R package versions recorded in renv.lock. Linux binaries
-# come from the Posit Public Package Manager, which keeps the build fast; the
-# versions themselves are fixed by the lockfile.
+# Restore the exact R package versions recorded in renv.lock into the image's
+# system library. Linux binaries come from the Posit Public Package Manager,
+# which keeps the build fast; the versions themselves are fixed by the
+# lockfile. Inside the container renv's project-library autoloader is turned
+# off, so R simply uses the packages installed here.
 ENV RENV_CONFIG_REPOS_OVERRIDE="https://p3m.dev/cran/__linux__/noble/latest" \
-    RENV_PATHS_LIBRARY="/thesis/renv/library"
+    RENV_CONFIG_AUTOLOADER_ENABLED="FALSE"
 COPY renv.lock renv.lock
 RUN Rscript -e "install.packages('renv', repos = 'https://p3m.dev/cran/__linux__/noble/latest')" \
-  && Rscript -e "renv::restore(lockfile = 'renv.lock', prompt = FALSE)"
+  && Rscript -e "renv::restore(lockfile = 'renv.lock', library = .libPaths()[1], prompt = FALSE)"
 
 # The project itself (data, code, document).
 COPY . .
