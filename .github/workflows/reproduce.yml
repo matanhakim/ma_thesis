@@ -1,0 +1,52 @@
+# Rebuild the thesis from scratch inside the Docker image on every push, and
+# keep the rendered HTML, Word and PDF files as workflow artifacts. A green
+# run is the proof that the analysis reproduces on a clean machine.
+name: Reproduce the thesis
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Build the Docker image
+        run: docker build -t ma-thesis .
+
+      - name: Run the pipeline and render the thesis
+        run: |
+          mkdir -p output _targets
+          docker run --rm \
+            -v "${{ github.workspace }}/output:/thesis/output" \
+            -v "${{ github.workspace }}/_targets:/thesis/_targets" \
+            ma-thesis
+
+      - name: Run the unit and integration tests
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}/_targets:/thesis/_targets" \
+            ma-thesis Rscript tests/testthat.R
+
+      - name: Compare the rendered thesis with the submitted version
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}/output:/thesis/output" \
+            ma-thesis Rscript scripts/compare_with_submitted.R
+
+      - name: Upload the rendered thesis
+        uses: actions/upload-artifact@v4
+        with:
+          name: thesis
+          path: |
+            output/thesis.html
+            output/thesis.docx
+            output/thesis.pdf
+            output/comparison_report.md
+          if-no-files-found: error

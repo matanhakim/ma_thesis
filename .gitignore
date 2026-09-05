@@ -1,5 +1,28 @@
-.Rproj.user
+# R session files
+.Rproj.user/
 .Rhistory
 .RData
 .Ruserdata
-companies.csv_targets/
+
+# renv project library (restored from renv.lock)
+renv/library/
+renv/local/
+renv/staging/
+renv/python/
+renv/sandbox/
+
+# targets store and rendered outputs (rebuilt by targets::tar_make())
+_targets/
+output/
+/thesis_files/
+/thesis.knit.md
+/*.html
+/*.docx
+/*.pdf
+/*.typ
+
+# Quarto project cache
+.quarto/
+
+/.quarto/
+**/*.quarto_ipynb
