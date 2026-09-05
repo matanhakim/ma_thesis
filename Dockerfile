@@ -24,6 +24,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libfontconfig1-dev \
     libfreetype6-dev \
     libfribidi-dev \
+    libglpk-dev \
+    libgmp-dev \
     libharfbuzz-dev \
     libjpeg-dev \
     libpng-dev \
