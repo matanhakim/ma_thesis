@@ -1,0 +1,22 @@
+<script>
+// Lists of figures and tables for the HTML rendering. Word and the PDF build
+// these lists natively; in HTML the captions are collected once the page has
+// loaded and written into the two placeholder divs of thesis.qmd.
+document.addEventListener("DOMContentLoaded", function () {
+  function fill(targetId, selector) {
+    var target = document.getElementById(targetId);
+    if (!target) return;
+    document.querySelectorAll(selector).forEach(function (cap) {
+      var p = document.createElement("p");
+      var link = document.createElement("a");
+      var anchor = cap.closest("[id]");
+      link.textContent = cap.textContent.replace(/\s+/g, " ").trim();
+      if (anchor) link.href = "#" + anchor.id;
+      p.appendChild(link);
+      target.appendChild(p);
+    });
+  }
+  fill("list-of-figures", ".quarto-float-fig figcaption");
+  fill("list-of-tables", ".quarto-float-tbl figcaption");
+});
+</script>

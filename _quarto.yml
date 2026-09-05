@@ -1,0 +1,75 @@
+project:
+  type: default
+  output-dir: output
+  render:
+    - thesis.qmd
+  post-render: scripts/postprocess_docx.R
+
+# The thesis is written in Hebrew, right to left.
+lang: he
+dir: rtl
+
+number-sections: true
+number-depth: 3
+fig-cap-location: top
+tbl-cap-location: top
+
+crossref:
+  fig-title: איור
+  tbl-title: טבלה
+  title-delim: ":"
+  fig-prefix: איור
+  tbl-prefix: טבלה
+  ref-hyperlink: true
+
+execute:
+  echo: false
+  warning: false
+  message: false
+  freeze: false
+
+knitr:
+  opts_chunk:
+    dev: ragg_png
+    dpi: 300
+    fig.width: 7
+    fig.height: 5
+
+filters:
+  - quarto
+  - filters/title-page.lua
+  - filters/toc-list.lua
+
+format:
+  html:
+    from: markdown-smart
+    output-file: thesis.html
+    toc: true
+    toc-depth: 3
+    toc-title: תוכן העניינים
+    toc-location: right
+    embed-resources: true
+    mainfont: David, "David CLM", serif
+    fontsize: 1.05em
+    css: assets/thesis.css
+    include-after-body: assets/lists.html
+    link-external-newwindow: true
+  docx:
+    from: markdown-smart
+    output-file: thesis.docx
+    reference-doc: assets/reference.docx
+    toc: false
+  typst:
+    from: markdown-smart
+    output-file: thesis.pdf
+    papersize: us-letter
+    margin:
+      x: 1in
+      y: 1in
+    mainfont: David
+    fontsize: 12pt
+    toc: false
+    section-numbering: 1.1.1
+    keep-typ: false
+    template-partials:
+      - assets/typst/typst-template.typ

@@ -1,0 +1,66 @@
+/* HTML rendering of the thesis: Hebrew, right to left, David typeface. */
+
+body {
+  font-family: David, "David CLM", "Frank Ruehl CLM", "Times New Roman", serif;
+  line-height: 1.9;
+}
+
+h1, h2, h3, .quarto-title h1 {
+  color: #2F5496;
+  font-weight: normal;
+}
+
+h1 { font-size: 1.5em; }
+h2 { font-size: 1.2em; }
+h3 { font-size: 1.05em; }
+
+p {
+  text-align: justify;
+  text-indent: 0.5in;
+}
+
+li p, .title-page p, .list-of-captions p, .toc-list p, figcaption, caption {
+  text-indent: 0;
+}
+
+.title-page {
+  text-align: center;
+  margin: 3em 0;
+}
+
+.title-page p {
+  text-align: center;
+  margin: 0.4em 0;
+}
+
+figcaption, .figure-caption, caption, .table-caption {
+  color: #44546A;
+  text-align: center;
+  font-size: 1em;
+}
+
+.list-of-captions p, .toc-list p {
+  margin: 0.2em 0;
+}
+
+.toc-list a {
+  text-decoration: none;
+}
+
+.english {
+  direction: ltr;
+  text-align: left;
+}
+
+.english p {
+  text-align: left;
+  text-indent: 0;
+}
+
+table {
+  margin: 1em auto;
+}
+
+.footnotes {
+  font-size: 0.85em;
+}
